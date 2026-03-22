@@ -68,6 +68,9 @@ main { width: 100%; max-width: 680px; padding: 0 1.5rem 3rem; }
   font-size: 14px; cursor: pointer; letter-spacing: 0.05em; transition: opacity 0.15s;
 }
 .start-go:hover { opacity: 0.88; }
+.time-btn { padding: 8px 20px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); font-family: var(--mono); font-size: 13px; cursor: pointer; transition: all .15s; color: var(--text); }
+.time-btn:hover { background: var(--bg); }
+.time-btn.selected { border-color: var(--accent); background: var(--accent-light); color: var(--accent); font-weight: 500; }
 
 /* STATS BAR */
 .stats-bar {
@@ -185,26 +188,30 @@ main { width: 100%; max-width: 680px; padding: 0 1.5rem 3rem; }
       <div class="diff-grid">
         <button class="diff-btn selected" data-diff="easy" onclick="selectDiff('easy')">
           <span class="diff-name">Lätt</span>
-          <span class="diff-desc">4×4 rutnät med 4 symboler</span>
-          <span class="diff-size">Nära AON-testets riktiga format</span>
+          <span class="diff-desc">Blandar 4×4, 5×5 och 6×6 lätta pussel</span>
         </button>
         <button class="diff-btn" data-diff="medium" onclick="selectDiff('medium')">
           <span class="diff-name">Medel</span>
-          <span class="diff-desc">5×5 rutnät med 5 symboler</span>
-          <span class="diff-size">Mer att hålla koll på</span>
+          <span class="diff-desc">Blandar 4×4, 5×5 och 6×6 medelsvåra pussel</span>
         </button>
         <button class="diff-btn" data-diff="hard" onclick="selectDiff('hard')">
           <span class="diff-name">Svår</span>
-          <span class="diff-desc">5×5 rutnät, färre ledtrådar</span>
-          <span class="diff-size">Kräver mer logisk uteslutning</span>
+          <span class="diff-desc">Blandar 4×4, 5×5 och 6×6 svåra pussel</span>
         </button>
         <button class="diff-btn" data-diff="mix" onclick="selectDiff('mix')">
           <span class="diff-name">Mix</span>
-          <span class="diff-desc">3 lätta → 3 medel → 3 svåra, sedan varvas</span>
-          <span class="diff-size">Blandar storlek och svårighet</span>
+          <span class="diff-desc">Blandar alla storlekar och svårighetsgrader</span>
         </button>
       </div>
-      <button class="start-go" onclick="startSession()">Starta — 6 minuter →</button>
+      <div style="margin-bottom:1.5rem;">
+        <p style="font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;">Välj tid</p>
+        <div style="display:flex;gap:8px;">
+          <button class="time-btn selected" data-mins="6" onclick="selectTime(6)">6 min</button>
+          <button class="time-btn" data-mins="12" onclick="selectTime(12)">12 min</button>
+          <button class="time-btn" data-mins="18" onclick="selectTime(18)">18 min</button>
+        </div>
+      </div>
+      <button class="start-go" id="start-go-btn" onclick="startSession()">Starta — 6 minuter →</button>
     </div>
   </div>
 
@@ -256,16 +263,21 @@ main { width: 100%; max-width: 680px; padding: 0 1.5rem 3rem; }
   </div>
 </main>
 
+<script src="puzzle-library.js"></script>
+<script src="puzzles.js"></script>
 <script>
+
+
 // CONFIG PER DIFFICULTY
 // easy: 4x4, medium: 5x5 normal, hard: 5x5 fewer givens
 const DIFF_CONFIG = {
-  easy:   { n: 4, givens: 10 },
-  medium: { n: 5, givens: 15 },
-  hard:   { n: 5, givens: 10 },
+  easy:   { pools: [{n:4,lib:'4x4_easy'},{n:5,lib:'5x5_easy'},{n:6,lib:'6x6_easy'}],   label: 'Lätt' },
+  medium: { pools: [{n:4,lib:'4x4_medium'},{n:5,lib:'5x5_medium'},{n:6,lib:'6x6_medium'}], label: 'Medel' },
+  hard:   { pools: [{n:4,lib:'4x4_hard'},{n:5,lib:'5x5_hard'},{n:6,lib:'6x6_hard'}],   label: 'Svår' },
+  mix:    { pools: [{n:4,lib:'4x4_easy'},{n:5,lib:'5x5_easy'},{n:6,lib:'6x6_easy'},{n:4,lib:'4x4_medium'},{n:5,lib:'5x5_medium'},{n:6,lib:'6x6_medium'},{n:4,lib:'4x4_hard'},{n:5,lib:'5x5_hard'},{n:6,lib:'6x6_hard'}], label: 'Mix' },
 };
-const DIFF_LABELS = { easy: 'Lätt', medium: 'Medel', hard: 'Svår', mix: 'Mix' };
-const TOTAL_SECS = 6 * 60;
+function getDiffLabel(diff) { return DIFF_CONFIG[diff] ? DIFF_CONFIG[diff].label : diff; }
+let TOTAL_SECS = 6 * 60;
 
 // Symbols pool — pick first N based on grid size
 const ALL_SYMBOLS = [
@@ -274,14 +286,10 @@ const ALL_SYMBOLS = [
   { shape: 'triangle', color: '#4A8C1C' },
   { shape: 'diamond',  color: '#BA7517' },
   { shape: 'plus',     color: '#7F77DD' },
+  { shape: 'star',     color: '#C2397A' },
 ];
 
-// Mix sequence
-const MIX_SEQ = ['easy','easy','easy','medium','medium','medium','hard','hard','hard'];
-function getMixDiff(count) {
-  if (count < 9) return MIX_SEQ[count];
-  return MIX_SEQ[3 + ((count - 9) % 3)];
-}
+function getMixDiff(count) { return 'mix'; } // unused but kept for compat
 
 let selectedDiff = 'easy';
 let N, SYMBOLS, solution, puzzle, userBoard;
@@ -295,6 +303,8 @@ let currentStreak = 0, bestStreak = 0;
 function selectDiff(d) {
   selectedDiff = d;
   document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('selected', b.dataset.diff === d));
+  const mins = Math.round(TOTAL_SECS/60);
+  document.getElementById('start-go-btn').textContent = `Starta — ${mins} minuter →`;
 }
 
 function showScreen(id) {
@@ -302,9 +312,16 @@ function showScreen(id) {
   document.getElementById(id).classList.add('active');
 }
 
+function selectTime(mins) {
+  TOTAL_SECS = mins * 60;
+  document.querySelectorAll('.time-btn').forEach(b => b.classList.toggle('selected', parseInt(b.dataset.mins) === mins));
+  document.getElementById('start-go-btn').textContent = `Starta — ${mins} minuter →`;
+}
+
 function startSession() {
   sessionSolved = 0; sessionSkipped = 0; puzzleCount = 0; bestTime = null; worstTime = null; puzzleLog = [];
   currentStreak = 0; bestStreak = 0;
+  Object.keys(usedIndices).forEach(k => delete usedIndices[k]);
   secondsLeft = TOTAL_SECS; gameOver = false;
   showScreen('screen-game');
   updateSessionStats();
@@ -325,24 +342,36 @@ function skipPuzzle() {
   initPuzzle();
 }
 
-function currentDiff() {
-  return selectedDiff === 'mix' ? getMixDiff(puzzleCount - 1) : selectedDiff;
+function currentDiff() { return selectedDiff; }
+
+const usedIndices = {};
+function getNextPuzzle(libKey) {
+  if (!usedIndices[libKey]) usedIndices[libKey] = [];
+  const pool = PUZZLE_LIBRARY[libKey];
+  let available = pool.map((_,i)=>i).filter(i=>!usedIndices[libKey].includes(i));
+  if (available.length === 0) { usedIndices[libKey] = []; available = pool.map((_,i)=>i); }
+  const idx = available[Math.floor(Math.random()*available.length)];
+  usedIndices[libKey].push(idx);
+  return pool[idx];
 }
 
 function initPuzzle() {
-  const diff = selectedDiff === 'mix' ? getMixDiff(puzzleCount) : selectedDiff;
+  const diff = selectedDiff;
   const cfg = DIFF_CONFIG[diff];
-  N = cfg.n;
+  // Pick a random pool entry (size) from this difficulty
+  const poolEntry = cfg.pools[Math.floor(Math.random()*cfg.pools.length)];
+  N = poolEntry.n;
   SYMBOLS = ALL_SYMBOLS.slice(0, N);
-  solution = generateSolution(N);
-  puzzle = makePuzzle(solution, cfg.givens, N);
-  userBoard = puzzle.map(r => [...r]);
+  const entry = getNextPuzzle(poolEntry.lib);
+  solution = entry.s;
+  puzzle = entry.p.map(r=>[...r]);
+  userBoard = puzzle.map(r=>[...r]);
   selectedCell = null; selectedPick = null;
   puzzleCount++;
   puzzleStartSecs = secondsLeft;
   document.getElementById('stat-count').textContent = puzzleCount;
+  document.getElementById('diff-tag').textContent = getDiffLabel(diff);
   document.getElementById('status').textContent = '';
-  document.getElementById('diff-tag').textContent = DIFF_LABELS[diff];
   renderGrid();
   renderMissing();
 }
@@ -405,40 +434,15 @@ function drawShapeSVG(idx, size) {
     const t=r*0.33,a=r;
     el=document.createElementNS('http://www.w3.org/2000/svg','polygon');
     el.setAttribute('points',`${cx-t},${cy-a} ${cx+t},${cy-a} ${cx+t},${cy-t} ${cx+a},${cy-t} ${cx+a},${cy+t} ${cx+t},${cy+t} ${cx+t},${cy+a} ${cx-t},${cy+a} ${cx-t},${cy+t} ${cx-a},${cy+t} ${cx-a},${cy-t} ${cx-t},${cy-t}`);
+  } else if(shape==='star'){
+    const pts=[];
+    for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5;const rad=i%2===0?r:r*0.42;pts.push(`${cx+rad*Math.cos(a)},${cy+rad*Math.sin(a)}`);}
+    el=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    el.setAttribute('points',pts.join(' '));
   }
   el.setAttribute('fill', color);
   svg.appendChild(el);
   return svg;
-}
-
-function isValid(board,row,col,val,n){
-  for(let c=0;c<n;c++) if(board[row][c]===val&&c!==col) return false;
-  for(let r=0;r<n;r++) if(board[r][col]===val&&r!==row) return false;
-  return true;
-}
-
-function generateSolution(n){
-  const board=Array.from({length:n},()=>Array(n).fill(-1));
-  function fill(pos){
-    if(pos===n*n) return true;
-    const row=Math.floor(pos/n),col=pos%n;
-    const vals=[...Array(n).keys()].sort(()=>Math.random()-0.5);
-    for(const v of vals){
-      if(isValid(board,row,col,v,n)){board[row][col]=v;if(fill(pos+1))return true;board[row][col]=-1;}
-    }
-    return false;
-  }
-  fill(0); return board;
-}
-
-function makePuzzle(sol,givens,n){
-  const p=sol.map(r=>[...r]);
-  const cells=[];
-  for(let r=0;r<n;r++) for(let c=0;c<n;c++) cells.push([r,c]);
-  cells.sort(()=>Math.random()-0.5);
-  let removed=0;
-  for(const [r,c] of cells){if(removed>=n*n-givens)break;p[r][c]=-1;removed++;}
-  return p;
 }
 
 function getMissingInRow(row){
@@ -538,7 +542,7 @@ function showResults(){
   showScreen('screen-results');
   const total=sessionSolved+sessionSkipped;
   document.getElementById('results-subtitle').textContent=
-    `${total} pussel genomförda på 6 minuter · ${DIFF_LABELS[selectedDiff]}`;
+    `${total} pussel genomförda på 6 minuter · ${getDiffLabel(selectedDiff)}`;
   document.getElementById('res-solved').textContent=sessionSolved;
   document.getElementById('res-skipped').textContent=sessionSkipped;
   document.getElementById('res-best').textContent=bestTime!==null?formatTime(bestTime):'—';
@@ -567,7 +571,7 @@ function showResults(){
   const bd={easy:{s:0,t:0},medium:{s:0,t:0},hard:{s:0,t:0}};
   puzzleLog.forEach(p=>{if(p.diff in bd){bd[p.diff].t++;if(p.solved)bd[p.diff].s++;}});
   const bdEl=document.getElementById('diff-breakdown');
-  if(bdEl){bdEl.innerHTML='';[['easy','Lätt','#2D5016','#EBF2E3'],['medium','Medel','#7A4A00','#FFF5E6'],['hard','Svår','#8B1A1A','#FBF0F0']].forEach(([key,lbl,col,bg])=>{const b=bd[key];const pct=b.t>0?Math.round(b.s/b.t*100):null;bdEl.innerHTML+=`<div style="background:${bg};border-radius:12px;padding:1rem;text-align:center;border:1px solid var(--border-soft);"><span style="font-family:var(--serif);font-size:1.6rem;font-weight:600;color:${col};display:block;line-height:1;margin-bottom:4px;">${b.s}/<span style="font-size:1rem;">${b.t}</span></span><span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:3px;">${lbl}</span><span style="font-size:11px;color:${col};">${pct!==null?pct+'% löst':'Inga pussel'}</span></div>`;});}
+  if(bdEl){bdEl.innerHTML='';[['easy','Lätt','#2D5016','#EBF2E3'],['medium','Medel','#7A4A00','#FFF5E6'],['hard','Svår','#8B1A1A','#FBF0F0']].forEach(([key,lbl,col,bg])=>{const b=bd[key]||{s:0,t:0};if(!b.t)return;const pct=Math.round(b.s/b.t*100);bdEl.innerHTML+=`<div style="background:${bg};border-radius:12px;padding:1rem;text-align:center;border:1px solid var(--border-soft);"><span style="font-family:var(--serif);font-size:1.6rem;font-weight:600;color:${col};display:block;line-height:1;margin-bottom:4px;">${b.s}/<span style="font-size:1rem;">${b.t}</span></span><span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:3px;">${lbl}</span><span style="font-size:11px;color:${col};">${pct}% löst</span></div>`;});}
   const log=document.getElementById('puzzle-log');
   log.innerHTML=`<div class="log-header"><span>Pussel</span><span>Svårighet</span><span>Storlek</span><span>Tid</span><span>Resultat</span></div>`;
   if(puzzleLog.length===0){
@@ -578,7 +582,7 @@ function showResults(){
   puzzleLog.forEach((p,i)=>{
     const row=document.createElement('div');row.className='log-row';
     const res=p.skipped?'<span class="badge failed">Hoppad</span>':'<span class="badge solved">Löst</span>';
-    row.innerHTML=`<span>#${i+1}</span><span><span class="badge ${p.diff}">${DIFF_LABELS[p.diff]}</span></span><span>${p.n}×${p.n}</span><span>${p.solved?formatTime(p.time):'—'}</span><span>${res}</span>`;
+    row.innerHTML=`<span>#${i+1}</span><span><span class="badge ${p.diff}">${getDiffLabel(p.diff)}</span></span><span>${p.n}×${p.n}</span><span>${p.solved?formatTime(p.time):'—'}</span><span>${res}</span>`;
     log.appendChild(row);
   });
 }
