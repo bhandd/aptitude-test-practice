@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Induktivt Logiktest — AON-träning</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F5F2EC;--surface:#FFFFFF;--border:#D8D3C8;--border-soft:#E8E4DC;
+  --text:#1A1814;--text-muted:#7A7468;--text-faint:#B0AA9F;
+  --accent:#2D5016;--accent-light:#EBF2E3;--danger:#8B1A1A;--danger-light:#FBF0F0;
+  --mono:'DM Mono',monospace;--serif:'Fraunces',serif;
+  --gc:#3A8C2A;--grc:#888888;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+header{width:100%;max-width:860px;padding:2rem 1.5rem 1rem;display:flex;justify-content:space-between;align-items:baseline;}
+.logo{font-family:var(--serif);font-size:1.5rem;font-weight:300;letter-spacing:-0.02em;}
+.logo em{font-style:italic;color:var(--accent);}
+main{width:100%;max-width:860px;padding:0 1.5rem 3rem;}
+.screen{display:none;}.screen.active{display:block;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem;margin-top:1rem;}
+.card h2{font-family:var(--serif);font-weight:300;font-size:1.3rem;margin-bottom:.4rem;}
+.card>p{font-size:12px;color:var(--text-muted);line-height:1.7;margin-bottom:1.5rem;}
+.legend-box{background:var(--bg);border:1px solid var(--border-soft);border-radius:10px;padding:1rem 1.2rem;margin-bottom:1.8rem;font-size:12px;color:var(--text-muted);line-height:2;}
+.legend-box strong{color:var(--text);}
+.start-go{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:var(--mono);font-size:14px;cursor:pointer;letter-spacing:.05em;transition:opacity .15s;}
+.start-go:hover{opacity:.88;}
+
+.progress-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.progress-label{font-size:12px;color:var(--text-muted);}
+.progress-bar-wrap{flex:1;height:4px;background:var(--border-soft);border-radius:2px;margin:0 12px;}
+.progress-bar{height:4px;border-radius:2px;background:var(--accent);transition:width .3s;}
+
+.question-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.8rem;margin-bottom:14px;}
+.q-instruction{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:1.4rem;}
+.difficulty-chip{display:inline-block;padding:2px 10px;border-radius:99px;font-size:10px;margin-left:8px;vertical-align:middle;}
+.chip-easy{background:var(--accent-light);color:var(--accent);}
+.chip-medium{background:#FFF5E6;color:#7A4A00;}
+.chip-hard{background:var(--danger-light);color:var(--danger);}
+
+/* 2-row alternating layout */
+.examples-grid{display:grid;grid-template-columns:repeat(3,110px);grid-template-rows:repeat(2,110px);gap:4px;margin:0 auto 1.4rem;width:fit-content;}
+.divider-line{border:none;border-top:2px dashed var(--border);margin:1.2rem 0;}
+.answer-instruction{font-size:11px;color:var(--text-muted);margin-bottom:1rem;text-transform:uppercase;letter-spacing:.08em;}
+.answers-grid{display:grid;grid-template-columns:repeat(4,110px);gap:6px;margin:0 auto;width:fit-content;}
+
+.feedback-box{margin-top:1rem;padding:.9rem 1.2rem;border-radius:10px;font-size:12px;line-height:1.7;display:none;}
+.feedback-box.show{display:block;}
+.feedback-correct{background:var(--accent-light);color:var(--accent);}
+.feedback-wrong{background:var(--danger-light);color:var(--danger);}
+.next-btn{width:100%;margin-top:1rem;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:var(--mono);font-size:13px;cursor:pointer;letter-spacing:.04em;display:none;transition:opacity .15s;}
+.next-btn:hover{opacity:.88;}
+.timer-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.timer-display{font-family:var(--serif);font-size:2rem;font-weight:300;letter-spacing:.04em;color:var(--text);}
+.timer-display.urgent{color:var(--danger);}
+.timer-bar-wrap{flex:1;height:4px;background:var(--border-soft);border-radius:2px;margin:0 12px;}
+.timer-bar{height:4px;border-radius:2px;background:var(--accent);transition:width 1s linear,background .3s;}
+.diff-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem;}
+.breakdown-cell{text-align:center;padding:1rem .8rem;border-radius:12px;border:1px solid var(--border-soft);}
+.breakdown-cell .bval{font-family:var(--serif);font-size:1.6rem;font-weight:600;display:block;line-height:1;margin-bottom:4px;}
+.breakdown-cell .blbl{font-size:10px;text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:3px;}
+.breakdown-cell .bpct{font-size:11px;}
+.review-section{margin-bottom:2rem;}
+.review-section h3{font-family:var(--serif);font-weight:300;font-size:1.1rem;margin-bottom:1rem;}
+.review-item{border:1px solid var(--border-soft);border-radius:12px;padding:1rem 1.2rem;margin-bottom:10px;background:var(--bg);}
+.review-item .ri-header{font-size:11px;color:var(--text-muted);margin-bottom:.6rem;}
+.review-item .ri-hint{font-size:12px;color:var(--danger);line-height:1.6;}
+.review-examples{display:flex;gap:4px;flex-wrap:wrap;margin-top:.6rem;}
+.next-btn.show{display:block;}
+
+.big-stat{display:flex;gap:12px;margin-bottom:1.5rem;}
+.big-num{flex:1;text-align:center;padding:1.2rem .8rem;background:var(--bg);border-radius:12px;border:1px solid var(--border-soft);}
+.big-num .val{font-family:var(--serif);font-size:2.4rem;font-weight:600;display:block;line-height:1;margin-bottom:6px;}
+.big-num .lbl{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
+.log-table{border:1px solid var(--border-soft);border-radius:10px;overflow:hidden;margin-bottom:2rem;}
+.log-header{display:grid;grid-template-columns:1.5fr 2.5fr 1fr 1fr;padding:8px 14px;background:var(--bg);font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border-soft);}
+.log-row{display:grid;grid-template-columns:1.5fr 2.5fr 1fr 1fr;padding:9px 14px;font-size:11px;border-bottom:1px solid var(--border-soft);align-items:center;}
+.log-row:last-child{border-bottom:none;}
+.log-row:nth-child(even){background:#FAFAF8;}
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;}
+.badge.correct{background:var(--accent-light);color:var(--accent);}
+.badge.wrong{background:var(--danger-light);color:var(--danger);}
+.badge.easy{background:var(--accent-light);color:var(--accent);}
+.badge.medium{background:#FFF5E6;color:#7A4A00;}
+.badge.hard{background:var(--danger-light);color:var(--danger);}
+.results-actions{display:flex;gap:10px;}
+.btn-primary{flex:1;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:var(--mono);font-size:13px;cursor:pointer;transition:opacity .15s;}
+.btn-primary:hover{opacity:.88;}
+.btn-secondary{flex:1;padding:13px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;font-family:var(--mono);font-size:13px;cursor:pointer;}
+.btn-secondary:hover{background:var(--bg);}
+</style>
+</head>
+<body>
+<header><div class="logo">Induktivt<em>test</em></div></header>
+<main>
+  <div class="screen active" id="screen-start">
+    <div class="card">
+      <h2>Induktivt logiktest</h2>
+      <p>Du ser 6 diamantkort — tre tillhör grön kategori, tre tillhör grå. Hitta regeln. Klassificera sedan 4 nya kort.</p>
+      <div class="legend-box">
+        <strong>Grön kategori:</strong> grön cirkel nere till vänster · tom cirkel uppe till höger<br>
+        <strong>Grå kategori:</strong> grå cirkel uppe till höger · tom cirkel nere till vänster<br>
+        <strong>Svar:</strong> klicka på cirkeln nere till vänster (grön) eller uppe till höger (grå) på testkorten
+      </div>
+      <button class="start-go" onclick="startTest()">Starta test →</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-question">
+    <div class="timer-row">
+      <div>
+        <div class="timer-display" id="timer">12:00</div>
+        <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+      </div>
+      <button style="padding:7px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-family:var(--mono);font-size:12px;cursor:pointer;" onclick="endTest()">Avsluta</button>
+    </div>
+    <div class="progress-row">
+      <span class="progress-label" id="q-label">Fråga 1 av 15</span>
+      <div class="progress-bar-wrap"><div class="progress-bar" id="prog-bar" style="width:0%"></div></div>
+      <span class="progress-label" id="score-label">0 rätt</span>
+    </div>
+    <div class="question-card">
+      <div class="q-instruction">Hitta regeln — klassificera sedan testkorten
+        <span class="difficulty-chip" id="diff-chip"></span>
+      </div>
+      <div class="examples-grid" id="examples-grid"></div>
+      <hr class="divider-line">
+      <div class="answer-instruction">Klicka på cirkeln för att välja kategori</div>
+      <div class="answers-grid" id="answers-grid"></div>
+      <div class="feedback-box" id="feedback-box"></div>
+      <button class="next-btn" id="next-btn" onclick="nextQuestion()">Nästa fråga →</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-results">
+    <div class="card">
+      <h2>Resultat</h2>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:2rem;" id="res-subtitle"></p>
+      <div class="big-stat">
+        <div class="big-num"><span class="val" id="res-correct">0</span><span class="lbl">Rätt</span></div>
+        <div class="big-num"><span class="val" id="res-wrong">0</span><span class="lbl">Fel</span></div>
+        <div class="big-num"><span class="val" id="res-pct">0%</span><span class="lbl">Andel rätt</span></div>
+        <div class="big-num"><span class="val" id="res-streak">0</span><span class="lbl">Bästa streak</span></div>
+      </div>
+      <div id="insights-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem;"></div>
+      <div class="diff-breakdown" id="diff-breakdown"></div>
+      <div class="review-section" id="review-section"></div>
+      <div class="log-table" id="log-table"></div>
+      <div class="results-actions">
+        <button class="btn-primary" onclick="startTest()">Kör igen</button>
+        <button class="btn-secondary" onclick="showScreen('screen-start')">Startsida</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// ── helpers ──────────────────────────────────────────────────
+const VOWELS=new Set(['A','E','I','O','U','Y']);
+const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
+const shuffle=arr=>[...arr].sort(()=>Math.random()-.5);
+const isDigit=c=>c>='0'&&c<='9';
+const isLetter=c=>/[A-Z]/.test(c);
+const isVowel=c=>VOWELS.has(c);
+const isCons=c=>isLetter(c)&&!isVowel(c);
+const letters=c=>c.filter(isLetter);
+const digits=c=>c.filter(isDigit).map(Number);
+const countD=c=>c.filter(isDigit).length;
+const countL=c=>c.filter(isLetter).length;
+const sumD=c=>c.reduce((s,x)=>s+(isDigit(x)?parseInt(x):0),0);
+const DIGS=['1','2','3','4','5','6','7','8','9'];
+const LETS=['B','C','D','F','G','H','K','L','M','N','P','R','S','T','V'];
+const VOWS=['A','E','I','O','U'];
+const CONS=['B','C','D','F','G','H','K','L','M','N','P','R','S','T','V'];
+function randGrid(d,l){
+  const p=[];
+  for(let i=0;i<d;i++)p.push(pick(DIGS));
+  for(let i=0;i<l;i++)p.push(pick(LETS));
+  while(p.length<9)p.push(Math.random()<.5?pick(DIGS):pick(LETS));
+  return shuffle(p).slice(0,9);
+}
+
+// ── rules ────────────────────────────────────────────────────
+const RULES=[
+  {name:'Bara siffror vs bara bokstäver',difficulty:'easy',
+   hint:'Gröna kort innehåller bara siffror. Grå kort innehåller bara bokstäver.',
+   gen(g){return g?Array.from({length:9},()=>pick(DIGS)):Array.from({length:9},()=>pick(LETS));},
+   check(c){return c.every(isDigit);}},
+  {name:'Fler siffror än bokstäver',difficulty:'easy',
+   hint:'Gröna: fler siffror än bokstäver. Grå: fler bokstäver än siffror.',
+   gen(g){const d=g?rand(5,8):rand(1,4);const l=9-d;const p=[];for(let i=0;i<d;i++)p.push(pick(DIGS));for(let i=0;i<l;i++)p.push(pick(LETS));return shuffle(p);},
+   check(c){return countD(c)>countL(c);}},
+  {name:'Mittcellen är siffra vs bokstav',difficulty:'easy',
+   hint:'Gröna: mittcellen (pos 4) är en siffra. Grå: mittcellen är en bokstav.',
+   gen(g){const gr=randGrid(4,4);gr[4]=g?pick(DIGS):pick(LETS);return gr;},
+   check(c){return isDigit(c[4]);}},
+  {name:'Alla siffror jämna vs alla udda',difficulty:'easy',
+   hint:'Gröna: alla siffror i kortet är jämna. Grå: alla siffror är udda.',
+   gen(g){const src=g?['2','4','6','8']:['1','3','5','7','9'];const d=rand(3,5);const p=[];for(let i=0;i<d;i++)p.push(pick(src));for(let i=d;i<9;i++)p.push(pick(LETS));return shuffle(p);},
+   check(c){const ds=digits(c);return ds.length>0&&ds.every(n=>n%2===0);}},
+  {name:'Bara vokaler vs bara konsonanter',difficulty:'easy',
+   hint:'Gröna: alla bokstäver är vokaler. Grå: alla bokstäver är konsonanter.',
+   gen(g){const src=g?VOWS:CONS;const l=rand(3,5);const p=[];for(let i=0;i<l;i++)p.push(pick(src));for(let i=l;i<9;i++)p.push(pick(DIGS));return shuffle(p);},
+   check(c){return letters(c).length>0&&letters(c).every(isVowel);}},
+  {name:'Siffrorna summerar >20 vs ≤20',difficulty:'easy',
+   hint:'Gröna: siffrorna summerar till mer än 20. Grå: summan är 20 eller under.',
+   gen(g){let p,s=0;do{p=[];const d=rand(4,6);for(let i=0;i<d;i++)p.push(pick(DIGS));for(let i=p.length;i<9;i++)p.push(pick(LETS));p=shuffle(p);s=sumD(p);}while(g?(s<=20):(s>20));return p;},
+   check(c){return sumD(c)>20;}},
+  {name:'Hörnen är siffror vs bokstäver',difficulty:'medium',
+   hint:'Gröna: alla fyra hörn (pos 0,2,6,8) innehåller siffror. Grå: hörnen innehåller bokstäver.',
+   gen(g){const gr=randGrid(3,3);[0,2,6,8].forEach(i=>gr[i]=g?pick(DIGS):pick(LETS));return gr;},
+   check(c){return [0,2,6,8].every(i=>isDigit(c[i]));}},
+  {name:'Kanterna är bokstäver vs siffror',difficulty:'medium',
+   hint:'Gröna: kanterna (pos 1,3,5,7) innehåller bokstäver. Grå: kanterna innehåller siffror.',
+   gen(g){const gr=randGrid(3,3);[1,3,5,7].forEach(i=>gr[i]=g?pick(LETS):pick(DIGS));return gr;},
+   check(c){return [1,3,5,7].every(i=>isLetter(c[i]));}},
+  {name:'Fler vokaler än konsonanter',difficulty:'medium',
+   hint:'Gröna: bland bokstäverna är det fler vokaler än konsonanter. Grå: fler konsonanter.',
+   gen(g){const p=[];const v=g?rand(3,4):rand(0,1);const cn=g?rand(0,v-1):rand(v+2,5);for(let i=0;i<v;i++)p.push(pick(VOWS));for(let i=0;i<cn;i++)p.push(pick(CONS));while(p.length<9)p.push(pick(DIGS));return shuffle(p).slice(0,9);},
+   check(c){const ls=letters(c);return ls.filter(isVowel).length>ls.filter(isCons).length;}},
+  {name:'Mittrad är bara siffror',difficulty:'medium',
+   hint:'Gröna: mittrad (pos 3,4,5) innehåller bara siffror. Grå: minst en bokstav i mittrad.',
+   gen(g){const gr=randGrid(4,4);if(g){[3,4,5].forEach(i=>gr[i]=pick(DIGS));}else{gr[rand(3,5)]=pick(LETS);}return gr;},
+   check(c){return [3,4,5].every(i=>isDigit(c[i]));}},
+  {name:'Antal siffror är jämnt vs udda',difficulty:'medium',
+   hint:'Gröna: antalet siffror i kortet är ett jämnt tal. Grå: antalet siffror är udda.',
+   gen(g){let d;do{d=rand(1,8);}while(g?(d%2!==0):(d%2===0));const p=[];for(let i=0;i<d;i++)p.push(pick(DIGS));for(let i=d;i<9;i++)p.push(pick(LETS));return shuffle(p);},
+   check(c){return countD(c)%2===0;}},
+  {name:'Siffrorna i stigande ordning',difficulty:'medium',
+   hint:'Gröna: siffrorna lästa vänster→höger, uppifrån är i stigande ordning. Grå: ej stigande.',
+   gen(g){const gr=Array(9).fill('');const pos=shuffle([0,1,2,3,4,5,6,7,8]);const nc=rand(3,5);const ch=pos.slice(0,nc).sort((a,b)=>a-b);let nums;if(g){nums=[];let last=0;for(let i=0;i<nc;i++){last+=rand(1,3);if(last>9)last=9;nums.push(last);}}else{do{nums=ch.map(()=>rand(1,9));}while(nums.every((v,i,a)=>i===0||v>a[i-1]));}ch.forEach((p,i)=>gr[p]=String(nums[i]));for(let i=0;i<9;i++)if(!gr[i])gr[i]=pick(LETS);return gr;},
+   check(c){const ns=[];for(let i=0;i<9;i++)if(isDigit(c[i]))ns.push(parseInt(c[i]));return ns.length>1&&ns.every((v,i,a)=>i===0||v>a[i-1]);}},
+  {name:'Diagonal siffror, anti-diagonal bokstäver',difficulty:'hard',
+   hint:'Gröna: pos 0,4,8 (diagonal) = siffror; pos 2,6 = bokstäver. Grå: omvänt.',
+   gen(g){const gr=randGrid(3,3);if(g){[0,4,8].forEach(i=>gr[i]=pick(DIGS));[2,6].forEach(i=>gr[i]=pick(LETS));}else{[0,4,8].forEach(i=>gr[i]=pick(LETS));[2,6].forEach(i=>gr[i]=pick(DIGS));}return gr;},
+   check(c){return [0,4,8].every(i=>isDigit(c[i]))&&[2,6].every(i=>isLetter(c[i]));}},
+  {name:'Summa hörn > summa kanter',difficulty:'hard',
+   hint:'Gröna: summan av siffror i hörnen (0,2,6,8) > summan av siffror i kanterna (1,3,5,7). Grå: tvärtom.',
+   gen(g){let gr,tries=0;do{gr=randGrid(5,3);const cs=sumD([0,2,6,8].map(i=>gr[i]));const es=sumD([1,3,5,7].map(i=>gr[i]));if(g&&cs>es)break;if(!g&&es>=cs)break;tries++;}while(tries<300);return gr;},
+   check(c){return sumD([0,2,6,8].map(i=>c[i]))>sumD([1,3,5,7].map(i=>c[i]));}},
+  {name:'Exakt en siffra per rad',difficulty:'hard',
+   hint:'Gröna: varje rad (0-2, 3-5, 6-8) innehåller exakt en siffra. Grå: minst en rad bryter regeln.',
+   gen(g){if(g){const gr=[];for(let r=0;r<3;r++){const row=[pick(LETS),pick(LETS),pick(LETS)];row[rand(0,2)]=pick(DIGS);gr.push(...shuffle(row));}return gr;}else{const gr=randGrid(4,4);gr[0]=pick(DIGS);gr[1]=pick(DIGS);return gr;}},
+   check(c){for(let r=0;r<3;r++){const row=[c[r*3],c[r*3+1],c[r*3+2]];if(row.filter(isDigit).length!==1)return false;}return true;}},
+];
+
+// ── SVG diamond ───────────────────────────────────────────────
+// 110x110 SVG. Diamond (rotated square) centered at 55,55.
+// Square side ~64px → half-diagonal = 64/√2*√2/2 = 32√2 ≈ 45
+// Points: top=(55,10), right=(100,55), bottom=(55,100), left=(10,55)
+// Circle positions:
+//   top-right corner area → (95, 15)  = gray category
+//   bottom-left corner area → (15, 95) = green category
+// Grid 3×3 inside diamond, rotated 45° around center
+// Each cell ~21×21, arranged in 3 columns × 3 rows
+// After rotation the cells appear as diagonal, so we rotate the text back
+
+function makeDiamondSVG({cells, topRightFill, bottomLeftFill, isAnswer=false, answered=false, selectedCat=null, correctCat=null, locked=false}){
+  const NS='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(NS,'svg');
+  svg.setAttribute('width','110');svg.setAttribute('height','110');
+  svg.setAttribute('viewBox','0 0 110 110');
+
+  // Diamond background
+  const diam=document.createElementNS(NS,'polygon');
+  diam.setAttribute('points','55,8 102,55 55,102 8,55');
+  diam.setAttribute('fill','#FFFFFF');
+  diam.setAttribute('stroke','#D8D3C8');
+  diam.setAttribute('stroke-width','1.5');
+  svg.appendChild(diam);
+
+  // 3×3 grid cells inside diamond (rotated 45°)
+  // We draw a rotated group with the 3×3 grid, each cell ~19px
+  const g=document.createElementNS(NS,'g');
+  g.setAttribute('transform','rotate(45 55 55)');
+  const cellW=20, cellH=20;
+  const startX=55-cellW*1.5, startY=55-cellH*1.5;
+  for(let r=0;r<3;r++){
+    for(let cc=0;cc<3;cc++){
+      const x=startX+cc*cellW, y=startY+r*cellH;
+      // cell border
+      const rect=document.createElementNS(NS,'rect');
+      rect.setAttribute('x',x);rect.setAttribute('y',y);
+      rect.setAttribute('width',cellW);rect.setAttribute('height',cellH);
+      rect.setAttribute('fill','none');rect.setAttribute('stroke','#E8E4DC');rect.setAttribute('stroke-width','0.5');
+      g.appendChild(rect);
+      // text (counter-rotate so it stays readable)
+      const txt=document.createElementNS(NS,'text');
+      txt.setAttribute('x',x+cellW/2);txt.setAttribute('y',y+cellH/2);
+      txt.setAttribute('text-anchor','middle');txt.setAttribute('dominant-baseline','central');
+      txt.setAttribute('font-size','8');txt.setAttribute('font-family','DM Mono, monospace');
+      txt.setAttribute('fill','#1A1814');
+      txt.setAttribute('transform',`rotate(-45 ${x+cellW/2} ${y+cellH/2})`);
+      txt.textContent=cells[r*3+cc];
+      g.appendChild(txt);
+    }
+  }
+  svg.appendChild(g);
+
+  // ── Circles ──
+  // top-right = gray category → position (90,14)
+  // bottom-left = green category → position (14,90) (nere till vänster)
+  const circR=9;
+
+  // Top-right circle (gray category indicator)
+  const ctr=document.createElementNS(NS,'circle');
+  ctr.setAttribute('cx','90');ctr.setAttribute('cy','18');ctr.setAttribute('r',circR);
+  ctr.setAttribute('stroke','#888888');ctr.setAttribute('stroke-width','1.5');
+  if(topRightFill==='gray') ctr.setAttribute('fill','#888888');
+  else ctr.setAttribute('fill','#FFFFFF');
+  // if answer and clickable
+  if(isAnswer&&!locked){
+    ctr.style.cursor='pointer';
+    ctr.dataset='gray';
+    ctr.classList.add('ans-circ-tr');
+  }
+  // highlight if selected
+  if(isAnswer&&selectedCat==='gray'&&!answered){
+    ctr.setAttribute('stroke','#555');ctr.setAttribute('stroke-width','2.5');
+    ctr.setAttribute('fill','#888888');
+  }
+  if(answered){
+    if(correctCat==='gray'){
+      ctr.setAttribute('fill','#888888');ctr.setAttribute('stroke','#555');
+    }
+    if(selectedCat==='gray'&&correctCat!=='gray'){
+      ctr.setAttribute('stroke','#8B1A1A');ctr.setAttribute('stroke-width','2.5');
+    }
+  }
+  svg.appendChild(ctr);
+
+  // Bottom-left circle (green category indicator)
+  const cbl=document.createElementNS(NS,'circle');
+  cbl.setAttribute('cx','18');cbl.setAttribute('cy','90');cbl.setAttribute('r',circR);
+  cbl.setAttribute('stroke','#3A8C2A');cbl.setAttribute('stroke-width','1.5');
+  if(bottomLeftFill==='green') cbl.setAttribute('fill','#3A8C2A');
+  else cbl.setAttribute('fill','#FFFFFF');
+  if(isAnswer&&!locked){
+    cbl.style.cursor='pointer';
+    cbl.classList.add('ans-circ-bl');
+  }
+  if(isAnswer&&selectedCat==='green'&&!answered){
+    cbl.setAttribute('stroke','#2D5016');cbl.setAttribute('stroke-width','2.5');
+    cbl.setAttribute('fill','#3A8C2A');
+  }
+  if(answered){
+    if(correctCat==='green'){
+      cbl.setAttribute('fill','#3A8C2A');cbl.setAttribute('stroke','#2D5016');
+    }
+    if(selectedCat==='green'&&correctCat!=='green'){
+      cbl.setAttribute('stroke','#8B1A1A');cbl.setAttribute('stroke-width','2.5');
+    }
+  }
+  svg.appendChild(cbl);
+
+  // wrong X mark if answered wrong
+  if(answered&&selectedCat!==correctCat){
+    const line1=document.createElementNS(NS,'line');
+    line1.setAttribute('x1','46');line1.setAttribute('y1','46');
+    line1.setAttribute('x2','64');line1.setAttribute('y2','64');
+    line1.setAttribute('stroke','#8B1A1A');line1.setAttribute('stroke-width','2');
+    svg.appendChild(line1);
+    const line2=document.createElementNS(NS,'line');
+    line2.setAttribute('x1','64');line2.setAttribute('y1','46');
+    line2.setAttribute('x2','46');line2.setAttribute('y2','64');
+    line2.setAttribute('stroke','#8B1A1A');line2.setAttribute('stroke-width','2');
+    svg.appendChild(line2);
+  }
+
+  return svg;
+}
+
+// ── State ────────────────────────────────────────────────────
+const TOTAL_Q=20;
+const PROGRESSION=[...Array(7).fill('easy'),...Array(7).fill('medium'),...Array(6).fill('hard')];
+const TOTAL_SECS=12*60;
+let timerInterval=null,secondsLeft=TOTAL_SECS,testOver=false;
+let sessionRules=[],currentQ=0,score=0,questionLog=[];
+let currentStreak=0,bestStreak=0,questionStartTime=null;
+let currentQuestion=null;
+let answerSelections=[null,null,null,null];
+let isLocked=false;
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+
+function pickRulesForSession(){
+  const byDiff={easy:[],medium:[],hard:[]};
+  RULES.forEach(r=>byDiff[r.difficulty].push(r));
+  const used=[];const result=[];
+  for(const diff of PROGRESSION){
+    const pool=byDiff[diff].filter(r=>!used.includes(r));
+    const rule=pick(pool.length>0?pool:byDiff[diff]);
+    used.push(rule);result.push(rule);
+  }
+  return result;
+}
+
+function generateQuestion(rule){
+  // Examples: row1 = gray, green, gray  →  row2 = green, gray, green
+  // So categories in order: gray, green, gray, green, gray, green
+  const catOrder=[false,true,false,true,false,true]; // false=gray, true=green
+  const exampleCats=catOrder;
+  const examples=exampleCats.map(isGreen=>({cells:rule.gen(isGreen),isGreen}));
+
+  const answers=[];
+  for(let i=0;i<2;i++) answers.push({cells:rule.gen(true),correctIsGreen:true});
+  for(let i=0;i<2;i++) answers.push({cells:rule.gen(false),correctIsGreen:false});
+  return {rule, examples, answers:shuffle(answers)};
+}
+
+function startTest(){
+  sessionRules=pickRulesForSession();
+  currentQ=0;score=0;questionLog=[];
+  showScreen('screen-question');
+  secondsLeft=TOTAL_SECS; testOver=false;
+  currentStreak=0; bestStreak=0;
+  clearInterval(timerInterval);
+  startTimer();
+  loadQuestion();
+}
+
+function loadQuestion(){
+  const rule=sessionRules[currentQ];
+  currentQuestion=generateQuestion(rule);
+  answerSelections=[null,null,null,null];
+  isLocked=false;
+
+  questionStartTime=Date.now();
+  document.getElementById('q-label').textContent=`Fråga ${currentQ+1} av ${TOTAL_Q}`;
+  document.getElementById('prog-bar').style.width=`${(currentQ/TOTAL_Q)*100}%`;
+  document.getElementById('score-label').textContent=`${score} rätt`;
+
+  const chip=document.getElementById('diff-chip');
+  chip.textContent={easy:'Lätt',medium:'Medel',hard:'Svår'}[rule.difficulty];
+  chip.className='difficulty-chip chip-'+rule.difficulty;
+
+  renderExamples();
+  renderAnswers();
+
+  document.getElementById('feedback-box').className='feedback-box';
+  document.getElementById('feedback-box').innerHTML='';
+  const nb=document.getElementById('next-btn');
+  nb.className='next-btn';
+  nb.textContent=currentQ+1<TOTAL_Q?'Nästa fråga →':'Se resultat';
+}
+
+function renderExamples(){
+  const grid=document.getElementById('examples-grid');
+  grid.innerHTML='';
+  // Layout: row1 = gray(0), green(1), gray(2) | row2 = green(3), gray(4), green(5)
+  currentQuestion.examples.forEach(ex=>{
+    const tr=ex.isGreen?'empty':'gray';
+    const bl=ex.isGreen?'green':'empty';
+    grid.appendChild(makeDiamondSVG({cells:ex.cells, topRightFill:tr, bottomLeftFill:bl}));
+  });
+}
+
+function renderAnswers(answered=false){
+  const grid=document.getElementById('answers-grid');
+  grid.innerHTML='';
+  currentQuestion.answers.forEach((ans,i)=>{
+    const sel=answerSelections[i];
+    const correctCat=ans.correctIsGreen?'green':'gray';
+    const svg=makeDiamondSVG({
+      cells:ans.cells,
+      topRightFill: answered&&correctCat==='gray'?'gray':(sel==='gray'?'gray':'empty'),
+      bottomLeftFill: answered&&correctCat==='green'?'green':(sel==='green'?'green':'empty'),
+      isAnswer:true,
+      answered,
+      selectedCat:sel,
+      correctCat,
+      locked:isLocked
+    });
+
+    // click handlers on circles
+    if(!answered){
+      svg.querySelectorAll('.ans-circ-tr').forEach(el=>{
+        el.addEventListener('click',e=>{e.stopPropagation();selectAnswer(i,'gray');});
+      });
+      svg.querySelectorAll('.ans-circ-bl').forEach(el=>{
+        el.addEventListener('click',e=>{e.stopPropagation();selectAnswer(i,'green');});
+      });
+      // Also allow clicking the SVG circles by position using the actual circle elements
+      const circles=svg.querySelectorAll('circle');
+      // circles[0] = top-right (gray), circles[1] = bottom-left (green)
+      if(circles[0]) circles[0].addEventListener('click',e=>{e.stopPropagation();selectAnswer(i,'gray');});
+      if(circles[1]) circles[1].addEventListener('click',e=>{e.stopPropagation();selectAnswer(i,'green');});
+    }
+    grid.appendChild(svg);
+  });
+}
+
+function selectAnswer(idx, cat){
+  if(isLocked) return;
+  answerSelections[idx]=answerSelections[idx]===cat?null:cat;
+  renderAnswers(false);
+  if(answerSelections.every(s=>s!==null)) evaluateAnswers();
+}
+
+function evaluateAnswers(){
+  isLocked=true;
+  let allCorrect=true;
+  currentQuestion.answers.forEach((ans,i)=>{
+    const sel=answerSelections[i];
+    const correct=(sel==='green'&&ans.correctIsGreen)||(sel==='gray'&&!ans.correctIsGreen);
+    if(!correct) allCorrect=false;
+  });
+  const elapsed=Math.round((Date.now()-questionStartTime)/1000);
+  if(allCorrect){score++;currentStreak++;if(currentStreak>bestStreak)bestStreak=currentStreak;}
+  else{currentStreak=0;}
+  if(currentQ+1>=TOTAL_Q){clearInterval(timerInterval);testOver=true;}
+  questionLog.push({q:currentQ+1,rule:currentQuestion.rule.name,hint:currentQuestion.rule.hint,diff:currentQuestion.rule.difficulty,correct:allCorrect,exampleCells:currentQuestion.examples,elapsed});
+
+  renderAnswers(true);
+
+  const fb=document.getElementById('feedback-box');
+  fb.className='feedback-box show '+(allCorrect?'feedback-correct':'feedback-wrong');
+  fb.innerHTML=allCorrect
+    ?`<strong>Rätt!</strong> Regeln: ${currentQuestion.rule.hint}`
+    :`<strong>Fel på minst ett kort.</strong> Regeln: ${currentQuestion.rule.hint}`;
+  document.getElementById('next-btn').classList.add('show');
+  document.getElementById('score-label').textContent=`${score} rätt`;
+}
+
+function nextQuestion(){
+  currentQ++;
+  if(currentQ>=TOTAL_Q){clearInterval(timerInterval);testOver=true;showResults();return;}
+  loadQuestion();
+}
+
+function startTimer(){
+  timerInterval=setInterval(()=>{
+    if(testOver){clearInterval(timerInterval);return;}
+    secondsLeft--;
+    const el=document.getElementById('timer');
+    if(el){
+      const m=Math.floor(secondsLeft/60),s=secondsLeft%60;
+      el.textContent=String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+      el.classList.toggle('urgent',secondsLeft<=60);
+    }
+    const bar=document.getElementById('timer-bar');
+    if(bar){
+      bar.style.width=(secondsLeft/TOTAL_SECS*100)+'%';
+      bar.style.background=secondsLeft<=60?'#8B1A1A':secondsLeft<=120?'#BA7517':'#2D5016';
+    }
+    if(secondsLeft<=0){clearInterval(timerInterval);testOver=true;showResults();}
+  },1000);
+}
+function endTest(){clearInterval(timerInterval);testOver=true;showResults();}
+function showResults(){
+  showScreen('screen-results');
+  const total=TOTAL_Q,pct=Math.round((score/total)*100);
+  document.getElementById('res-subtitle').textContent=`${score} av ${total} frågor rätt`;
+  // Streak
+  document.getElementById('res-streak').textContent=bestStreak;
+  document.getElementById('res-correct').textContent=score;
+  document.getElementById('res-wrong').textContent=total-score;
+  document.getElementById('res-pct').textContent=pct+'%';
+  // Insights: avg time per difficulty + weakest rule
+  const insEl=document.getElementById('insights-row');
+  insEl.innerHTML='';
+  // avg time per diff
+  const timeByDiff={easy:[],medium:[],hard:[]};
+  questionLog.forEach(q=>{if(q.elapsed&&q.diff in timeByDiff)timeByDiff[q.diff].push(q.elapsed);});
+  let timeHtml='<div style="background:var(--bg);border:1px solid var(--border-soft);border-radius:12px;padding:1rem 1.2rem;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.7rem;">Genomsnittlig svarstid</div>';
+  [['easy','Lätt','var(--accent)'],['medium','Medel','#7A4A00'],['hard','Svår','var(--danger)']].forEach(([k,l,c])=>{
+    const times=timeByDiff[k];
+    const avg=times.length>0?Math.round(times.reduce((a,b)=>a+b,0)/times.length):null;
+    timeHtml+=`<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--text-muted)">${l}</span><span style="color:${c};font-weight:500;">${avg!==null?avg+'s':'—'}</span></div>`;
+  });
+  timeHtml+='</div>';
+  // weakest rule type
+  const ruleCounts={};
+  questionLog.forEach(q=>{if(!q.correct){ruleCounts[q.rule]=(ruleCounts[q.rule]||0)+1;}});
+  const sortedRules=Object.entries(ruleCounts).sort((a,b)=>b[1]-a[1]);
+  let weakHtml='<div style="background:var(--bg);border:1px solid var(--border-soft);border-radius:12px;padding:1rem 1.2rem;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.7rem;">Svagaste regeltyper</div>';
+  if(sortedRules.length===0){weakHtml+='<div style="font-size:12px;color:var(--text-faint);">Inga fel — bra jobbat!</div>';}
+  else{sortedRules.slice(0,3).forEach(([rule,count])=>{weakHtml+=`<div style="font-size:11px;color:var(--text-muted);margin-bottom:5px;line-height:1.4;">✗ ${rule} <span style="color:var(--danger)">(${count}x)</span></div>`;});}
+  weakHtml+='</div>';
+  insEl.innerHTML=timeHtml+weakHtml;
+
+  // Breakdown
+  const bd={easy:{s:0,t:0},medium:{s:0,t:0},hard:{s:0,t:0}};
+  questionLog.forEach(q=>{if(q.diff in bd){bd[q.diff].t++;if(q.correct)bd[q.diff].s++;}});
+  const bdEl=document.getElementById('diff-breakdown');
+  bdEl.innerHTML='';
+  [['easy','Lätt','#2D5016','#EBF2E3'],['medium','Medel','#7A4A00','#FFF5E6'],['hard','Svår','#8B1A1A','#FBF0F0']].forEach(([key,lbl,col,bg])=>{
+    const b=bd[key];const pct=b.t>0?Math.round(b.s/b.t*100):null;
+    bdEl.innerHTML+=`<div class="breakdown-cell" style="background:${bg}">
+      <span class="bval" style="color:${col}">${b.s}<span style="font-size:1rem;">/${b.t}</span></span>
+      <span class="blbl" style="color:${col}">${lbl}</span>
+      <span class="bpct" style="color:${col}">${pct!==null?pct+'% rätt':'Inga frågor'}</span>
+    </div>`;
+  });
+
+  // Review wrong answers
+  const wrong=questionLog.filter(q=>!q.correct);
+  const revEl=document.getElementById('review-section');
+  revEl.innerHTML='';
+  if(wrong.length>0){
+    revEl.innerHTML='<h3>Genomgång av fel svar</h3>';
+    wrong.forEach(q=>{
+      const div=document.createElement('div');div.className='review-item';
+      const diffLabel={easy:'Lätt',medium:'Medel',hard:'Svår'}[q.diff];
+      div.innerHTML=`<div class="ri-header">Fråga #${q.q} · <span class="badge ${q.diff}">${diffLabel}</span></div>
+        <div class="ri-hint"><strong>Regel:</strong> ${q.hint}</div>
+        <div class="review-examples" id="rev-ex-${q.q}"></div>`;
+      revEl.appendChild(div);
+      // render mini example diamonds
+      const exWrap=div.querySelector('#rev-ex-'+q.q);
+      q.exampleCells.forEach(ex=>{
+        const tr=ex.isGreen?'empty':'gray';
+        const bl=ex.isGreen?'green':'empty';
+        const s=makeDiamondSVG({cells:ex.cells,topRightFill:tr,bottomLeftFill:bl});
+        s.setAttribute('width','70');s.setAttribute('height','70');
+        exWrap.appendChild(s);
+      });
+    });
+  }
+
+  const log=document.getElementById('log-table');
+  log.innerHTML=`<div class="log-header" style="grid-template-columns:1fr 2.5fr 1fr .8fr .8fr"><span>Fråga</span><span>Regel</span><span>Svårighet</span><span>Tid</span><span>Resultat</span></div>`;
+  questionLog.forEach(q=>{
+    const row=document.createElement('div');row.className='log-row';
+    row.style.gridTemplateColumns='1fr 2.5fr 1fr .8fr .8fr';
+    row.innerHTML=`<span>#${q.q}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${q.rule}</span><span><span class="badge ${q.diff}">${{easy:'Lätt',medium:'Medel',hard:'Svår'}[q.diff]}</span></span><span style="color:var(--text-muted)">${q.elapsed?q.elapsed+'s':'—'}</span><span><span class="badge ${q.correct?'correct':'wrong'}">${q.correct?'Rätt':'Fel'}</span></span>`;
+    log.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>

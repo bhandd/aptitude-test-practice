@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deduktivt Figurtest — AON-träning</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F5F2EC;
+  --surface: #FFFFFF;
+  --border: #D8D3C8;
+  --border-soft: #E8E4DC;
+  --text: #1A1814;
+  --text-muted: #7A7468;
+  --text-faint: #B0AA9F;
+  --accent: #2D5016;
+  --accent-light: #EBF2E3;
+  --danger: #8B1A1A;
+  --danger-light: #FBF0F0;
+  --warn: #7A4A00;
+  --warn-light: #FFF5E6;
+  --mono: 'DM Mono', monospace;
+  --serif: 'Fraunces', serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+header {
+  width: 100%;
+  max-width: 680px;
+  padding: 2rem 1.5rem 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.logo { font-family: var(--serif); font-size: 1.5rem; font-weight: 300; letter-spacing: -0.02em; }
+.logo em { font-style: italic; color: var(--accent); }
+main { width: 100%; max-width: 680px; padding: 0 1.5rem 3rem; }
+.screen { display: none; }
+.screen.active { display: block; }
+
+/* START */
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2.5rem; margin-top: 1rem; }
+.card h2 { font-family: var(--serif); font-weight: 300; font-size: 1.3rem; margin-bottom: 0.4rem; }
+.card p { font-size: 12px; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.8rem; }
+.diff-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 2rem; }
+.diff-btn {
+  border: 1px solid var(--border); border-radius: 12px; padding: 1.2rem 1rem;
+  background: var(--surface); cursor: pointer; text-align: left; transition: all 0.15s;
+}
+.diff-btn:hover { background: var(--bg); }
+.diff-btn.selected { border-color: var(--accent); background: var(--accent-light); }
+.diff-btn .diff-name { font-family: var(--serif); font-weight: 600; font-size: 1rem; display: block; margin-bottom: 4px; }
+.diff-btn.selected .diff-name { color: var(--accent); }
+.diff-btn .diff-desc { font-size: 10px; color: var(--text-muted); line-height: 1.6; }
+.diff-btn .diff-size { font-size: 11px; color: var(--text-faint); margin-top: 4px; display: block; }
+.start-go {
+  width: 100%; padding: 14px; background: var(--accent); color: #fff;
+  border: none; border-radius: 10px; font-family: var(--mono);
+  font-size: 14px; cursor: pointer; letter-spacing: 0.05em; transition: opacity 0.15s;
+}
+.start-go:hover { opacity: 0.88; }
+
+/* STATS BAR */
+.stats-bar {
+  display: flex; margin-bottom: 14px;
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--surface);
+}
+.stat-cell { flex: 1; padding: 10px 8px; text-align: center; border-right: 1px solid var(--border-soft); }
+.stat-cell:last-child { border-right: none; }
+.stat-val { font-family: var(--serif); font-size: 1.3rem; font-weight: 600; display: block; line-height: 1; margin-bottom: 3px; }
+.stat-lbl { font-size: 9px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* GAME TOP */
+.game-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.timer-wrap { display: flex; flex-direction: column; align-items: flex-start; }
+.timer-display { font-family: var(--serif); font-size: 2rem; font-weight: 300; letter-spacing: 0.04em; color: var(--text); }
+.timer-display.urgent { color: var(--danger); }
+.timer-bar-wrap { width: 120px; height: 4px; background: var(--border-soft); border-radius: 2px; margin-top: 4px; }
+.timer-bar { height: 4px; border-radius: 2px; background: var(--accent); transition: width 1s linear, background 0.3s; }
+.top-right { display: flex; gap: 8px; align-items: center; }
+.diff-tag {
+  font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 4px 10px; border-radius: 99px; background: var(--bg);
+  border: 1px solid var(--border); color: var(--text-muted);
+}
+.icon-btn {
+  width: 34px; height: 34px; border: 1px solid var(--border); border-radius: 8px;
+  background: var(--surface); cursor: pointer; display: flex; align-items: center;
+  justify-content: center; font-size: 14px; color: var(--text-muted); transition: background 0.1s;
+}
+.icon-btn:hover { background: var(--bg); }
+
+/* GRID */
+.grid-wrap { overflow-x: auto; margin-bottom: 14px; }
+.sudoku-grid {
+  display: grid; gap: 0;
+  border: 1.5px solid var(--border); border-radius: 10px; overflow: hidden;
+  width: fit-content; margin: 0 auto; background: var(--border-soft);
+}
+.cell {
+  border: 0.5px solid var(--border-soft); display: flex; align-items: center;
+  justify-content: center; cursor: pointer; background: var(--surface); transition: background 0.1s;
+}
+.cell.given { cursor: default; }
+.cell.empty:hover { background: #F0EDE6; }
+.cell.selected { background: #EBF2E3 !important; }
+.cell.wrong { background: var(--danger-light) !important; }
+
+/* MISSING BAR */
+.missing-bar {
+  display: flex; gap: 6px; align-items: center; padding: 10px 12px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+  min-height: 64px; flex-wrap: wrap; margin-bottom: 8px;
+}
+.missing-label { font-size: 10px; color: var(--text-muted); letter-spacing: 0.06em; text-transform: uppercase; margin-right: 2px; white-space: nowrap; }
+.sym-btn {
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.1s;
+}
+.sym-btn:hover { background: var(--bg); border-color: #B0AA9F; }
+.sym-btn.active-pick { border: 2px solid var(--accent); background: var(--accent-light); }
+.erase-btn {
+  border: 1px solid var(--border); border-radius: 8px; background: var(--surface);
+  cursor: pointer; font-size: 16px; display: flex; align-items: center; justify-content: center;
+  color: var(--text-muted);
+}
+.erase-btn:hover { background: var(--bg); }
+
+.hint-text { font-size: 11px; color: var(--text-faint); text-align: center; margin-bottom: 10px; }
+.status-line { text-align: center; font-size: 13px; min-height: 22px; color: var(--text-muted); }
+.win-msg { color: var(--accent); font-family: var(--serif); font-size: 15px; }
+.time-up-msg { color: var(--danger); font-family: var(--serif); font-size: 15px; }
+
+/* RESULTS */
+.big-stat { display: flex; gap: 12px; margin-bottom: 2rem; }
+.big-num { flex: 1; text-align: center; padding: 1.2rem 0.8rem; background: var(--bg); border-radius: 12px; border: 1px solid var(--border-soft); }
+.big-num .val { font-family: var(--serif); font-size: 2.4rem; font-weight: 600; display: block; line-height: 1; margin-bottom: 6px; }
+.big-num .lbl { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.08em; }
+.puzzle-log { border: 1px solid var(--border-soft); border-radius: 10px; overflow: hidden; margin-bottom: 2rem; }
+.log-header { display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1fr 1fr; padding: 8px 14px; background: var(--bg); font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.07em; border-bottom: 1px solid var(--border-soft); }
+.log-row { display: grid; grid-template-columns: 1.5fr 1.5fr 1fr 1fr 1fr; padding: 9px 14px; font-size: 12px; border-bottom: 1px solid var(--border-soft); align-items: center; }
+.log-row:last-child { border-bottom: none; }
+.log-row:nth-child(even) { background: #FAFAF8; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 99px; font-size: 10px; }
+.badge.solved { background: var(--accent-light); color: var(--accent); }
+.badge.failed { background: var(--danger-light); color: var(--danger); }
+.badge.easy { background: #EBF2E3; color: #2D5016; }
+.badge.medium { background: var(--warn-light); color: var(--warn); }
+.badge.hard { background: var(--danger-light); color: var(--danger); }
+.badge.mix { background: #EEF; color: #446; }
+.results-actions { display: flex; gap: 10px; }
+.btn-primary { flex:1; padding:13px; background:var(--accent); color:#fff; border:none; border-radius:10px; font-family:var(--mono); font-size:13px; cursor:pointer; letter-spacing:0.04em; transition:opacity 0.15s; }
+.btn-primary:hover { opacity:0.88; }
+.btn-secondary { flex:1; padding:13px; background:var(--surface); color:var(--text); border:1px solid var(--border); border-radius:10px; font-family:var(--mono); font-size:13px; cursor:pointer; transition:background 0.15s; }
+.btn-secondary:hover { background:var(--bg); }
+
+@media(max-width:500px){
+  .big-stat{flex-direction:column;}
+  .diff-grid{grid-template-columns:1fr;}
+  .log-header,.log-row{grid-template-columns:1fr 1fr 1fr;}
+  .log-header span:nth-child(2),.log-row span:nth-child(2),
+  .log-header span:nth-child(3),.log-row span:nth-child(3){display:none;}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">Deduktivt<em>test</em></div>
+</header>
+<main>
+  <!-- START -->
+  <div class="screen active" id="screen-start">
+    <div class="card">
+      <h2>Välj svårighetsgrad</h2>
+      <p>Lös så många rutnät du kan på 6 minuter. Varje rad och kolumn ska ha varje symbol exakt en gång — som sudoku med figurer.</p>
+      <div class="diff-grid">
+        <button class="diff-btn selected" data-diff="easy" onclick="selectDiff('easy')">
+          <span class="diff-name">Lätt</span>
+          <span class="diff-desc">4×4 rutnät med 4 symboler</span>
+          <span class="diff-size">Nära AON-testets riktiga format</span>
+        </button>
+        <button class="diff-btn" data-diff="medium" onclick="selectDiff('medium')">
+          <span class="diff-name">Medel</span>
+          <span class="diff-desc">5×5 rutnät med 5 symboler</span>
+          <span class="diff-size">Mer att hålla koll på</span>
+        </button>
+        <button class="diff-btn" data-diff="hard" onclick="selectDiff('hard')">
+          <span class="diff-name">Svår</span>
+          <span class="diff-desc">5×5 rutnät, färre ledtrådar</span>
+          <span class="diff-size">Kräver mer logisk uteslutning</span>
+        </button>
+        <button class="diff-btn" data-diff="mix" onclick="selectDiff('mix')">
+          <span class="diff-name">Mix</span>
+          <span class="diff-desc">3 lätta → 3 medel → 3 svåra, sedan varvas</span>
+          <span class="diff-size">Blandar storlek och svårighet</span>
+        </button>
+      </div>
+      <button class="start-go" onclick="startSession()">Starta — 6 minuter →</button>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="screen" id="screen-game">
+    <div class="stats-bar">
+      <div class="stat-cell"><span class="stat-val" id="stat-solved">0</span><span class="stat-lbl">Lösta</span></div>
+      <div class="stat-cell"><span class="stat-val" id="stat-failed">0</span><span class="stat-lbl">Hoppade</span></div>
+      <div class="stat-cell"><span class="stat-val" id="stat-count">1</span><span class="stat-lbl">Pussel nr</span></div>
+      <div class="stat-cell"><span class="stat-val" id="stat-best">—</span><span class="stat-lbl">Snabbast</span></div>
+    </div>
+    <div class="game-top">
+      <div class="timer-wrap">
+        <div class="timer-display" id="timer">06:00</div>
+        <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+      </div>
+      <div class="top-right">
+        <span class="diff-tag" id="diff-tag">Lätt</span>
+        <button class="icon-btn" title="Hoppa över" onclick="skipPuzzle()">→</button>
+        <button class="icon-btn" title="Avsluta" onclick="endSession()">✕</button>
+      </div>
+    </div>
+    <div class="grid-wrap"><div class="sudoku-grid" id="sgrid"></div></div>
+    <div class="missing-bar" id="missing-bar"><span class="missing-label">Saknas i rad:</span></div>
+    <p class="hint-text">Klicka på en tom ruta → välj symbol nedan. Pilen hoppar över pusslet.</p>
+    <div class="status-line" id="status"></div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="screen" id="screen-results">
+    <div class="card">
+      <h2>Sessionens slut</h2>
+      <p class="subtitle" id="results-subtitle" style="font-size:12px;color:var(--text-muted);margin-bottom:2rem;"></p>
+      <div class="big-stat">
+        <div class="big-num"><span class="val" id="res-solved">0</span><span class="lbl">Lösta</span></div>
+        <div class="big-num"><span class="val" id="res-skipped">0</span><span class="lbl">Hoppade</span></div>
+        <div class="big-num"><span class="val" id="res-best">—</span><span class="lbl">Snabbast</span></div>
+        <div class="big-num"><span class="val" id="res-streak">0</span><span class="lbl">Bästa streak</span></div>
+      </div>
+      <div id="insights-row" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem;"></div>
+      <div id="diff-breakdown" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem;"></div>
+      <div id="diff-breakdown" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem;"></div>
+      <div class="puzzle-log" id="puzzle-log"></div>
+      <div class="results-actions">
+        <button class="btn-primary" onclick="goToStart()">Ny session</button>
+        <button class="btn-secondary" onclick="startSession()">Samma inställningar</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+// CONFIG PER DIFFICULTY
+// easy: 4x4, medium: 5x5 normal, hard: 5x5 fewer givens
+const DIFF_CONFIG = {
+  easy:   { n: 4, givens: 10 },
+  medium: { n: 5, givens: 15 },
+  hard:   { n: 5, givens: 10 },
+};
+const DIFF_LABELS = { easy: 'Lätt', medium: 'Medel', hard: 'Svår', mix: 'Mix' };
+const TOTAL_SECS = 6 * 60;
+
+// Symbols pool — pick first N based on grid size
+const ALL_SYMBOLS = [
+  { shape: 'circle',   color: '#E24B4A' },
+  { shape: 'square',   color: '#2D6BB5' },
+  { shape: 'triangle', color: '#4A8C1C' },
+  { shape: 'diamond',  color: '#BA7517' },
+  { shape: 'plus',     color: '#7F77DD' },
+];
+
+// Mix sequence
+const MIX_SEQ = ['easy','easy','easy','medium','medium','medium','hard','hard','hard'];
+function getMixDiff(count) {
+  if (count < 9) return MIX_SEQ[count];
+  return MIX_SEQ[3 + ((count - 9) % 3)];
+}
+
+let selectedDiff = 'easy';
+let N, SYMBOLS, solution, puzzle, userBoard;
+let selectedCell = null, selectedPick = null;
+let secondsLeft = TOTAL_SECS, timerInterval = null, gameOver = false;
+let sessionSolved = 0, sessionSkipped = 0, puzzleCount = 0;
+let bestTime = null, worstTime = null, puzzleLog = [];
+let puzzleStartSecs = TOTAL_SECS;
+let currentStreak = 0, bestStreak = 0;
+
+function selectDiff(d) {
+  selectedDiff = d;
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.toggle('selected', b.dataset.diff === d));
+}
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function startSession() {
+  sessionSolved = 0; sessionSkipped = 0; puzzleCount = 0; bestTime = null; worstTime = null; puzzleLog = [];
+  currentStreak = 0; bestStreak = 0;
+  secondsLeft = TOTAL_SECS; gameOver = false;
+  showScreen('screen-game');
+  updateSessionStats();
+  initPuzzle();
+  startTimer();
+}
+
+function goToStart() { showScreen('screen-start'); }
+
+function endSession() { clearInterval(timerInterval); showResults(); }
+
+function skipPuzzle() {
+  if (gameOver) return;
+  currentStreak = 0;
+  sessionSkipped++;
+  puzzleLog.push({ diff: currentDiff(), solved: false, skipped: true, time: null, n: N });
+  updateSessionStats();
+  initPuzzle();
+}
+
+function currentDiff() {
+  return selectedDiff === 'mix' ? getMixDiff(puzzleCount - 1) : selectedDiff;
+}
+
+function initPuzzle() {
+  const diff = selectedDiff === 'mix' ? getMixDiff(puzzleCount) : selectedDiff;
+  const cfg = DIFF_CONFIG[diff];
+  N = cfg.n;
+  SYMBOLS = ALL_SYMBOLS.slice(0, N);
+  solution = generateSolution(N);
+  puzzle = makePuzzle(solution, cfg.givens, N);
+  userBoard = puzzle.map(r => [...r]);
+  selectedCell = null; selectedPick = null;
+  puzzleCount++;
+  puzzleStartSecs = secondsLeft;
+  document.getElementById('stat-count').textContent = puzzleCount;
+  document.getElementById('status').textContent = '';
+  document.getElementById('diff-tag').textContent = DIFF_LABELS[diff];
+  renderGrid();
+  renderMissing();
+}
+
+function startTimer() {
+  clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (gameOver) { clearInterval(timerInterval); return; }
+    secondsLeft--;
+    updateTimerDisplay();
+    if (secondsLeft <= 0) {
+      clearInterval(timerInterval);
+      gameOver = true;
+      document.getElementById('status').innerHTML = '<span class="time-up-msg">Tiden är slut!</span>';
+      setTimeout(showResults, 1500);
+    }
+  }, 1000);
+}
+
+function updateTimerDisplay() {
+  const el = document.getElementById('timer');
+  el.textContent = formatTime(secondsLeft);
+  el.classList.toggle('urgent', secondsLeft <= 60);
+  const bar = document.getElementById('timer-bar');
+  const pct = (secondsLeft / TOTAL_SECS) * 100;
+  bar.style.width = pct + '%';
+  bar.style.background = secondsLeft <= 60 ? '#8B1A1A' : secondsLeft <= 120 ? '#BA7517' : '#2D5016';
+}
+
+function formatTime(s) {
+  const m = Math.floor(s / 60), sec = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+function updateSessionStats() {
+  document.getElementById('stat-solved').textContent = sessionSolved;
+  document.getElementById('stat-failed').textContent = sessionSkipped;
+  document.getElementById('stat-best').textContent = bestTime !== null ? formatTime(bestTime) : '—';
+}
+
+function drawShapeSVG(idx, size) {
+  const { shape, color } = SYMBOLS[idx];
+  const svg = document.createElementNS('http://www.w3.org/2000/svg','svg');
+  svg.setAttribute('width', size); svg.setAttribute('height', size);
+  svg.setAttribute('viewBox','0 0 40 40');
+  const cx=20,cy=20,r=14; let el;
+  if(shape==='circle'){
+    el=document.createElementNS('http://www.w3.org/2000/svg','circle');
+    el.setAttribute('cx',cx);el.setAttribute('cy',cy);el.setAttribute('r',r);
+  } else if(shape==='square'){
+    el=document.createElementNS('http://www.w3.org/2000/svg','rect');
+    el.setAttribute('x',cx-r);el.setAttribute('y',cy-r);el.setAttribute('width',r*2);el.setAttribute('height',r*2);
+  } else if(shape==='triangle'){
+    el=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    el.setAttribute('points',`${cx},${cy-r} ${cx+r*1.1},${cy+r*0.75} ${cx-r*1.1},${cy+r*0.75}`);
+  } else if(shape==='diamond'){
+    el=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    el.setAttribute('points',`${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}`);
+  } else if(shape==='plus'){
+    const t=r*0.33,a=r;
+    el=document.createElementNS('http://www.w3.org/2000/svg','polygon');
+    el.setAttribute('points',`${cx-t},${cy-a} ${cx+t},${cy-a} ${cx+t},${cy-t} ${cx+a},${cy-t} ${cx+a},${cy+t} ${cx+t},${cy+t} ${cx+t},${cy+a} ${cx-t},${cy+a} ${cx-t},${cy+t} ${cx-a},${cy+t} ${cx-a},${cy-t} ${cx-t},${cy-t}`);
+  }
+  el.setAttribute('fill', color);
+  svg.appendChild(el);
+  return svg;
+}
+
+function isValid(board,row,col,val,n){
+  for(let c=0;c<n;c++) if(board[row][c]===val&&c!==col) return false;
+  for(let r=0;r<n;r++) if(board[r][col]===val&&r!==row) return false;
+  return true;
+}
+
+function generateSolution(n){
+  const board=Array.from({length:n},()=>Array(n).fill(-1));
+  function fill(pos){
+    if(pos===n*n) return true;
+    const row=Math.floor(pos/n),col=pos%n;
+    const vals=[...Array(n).keys()].sort(()=>Math.random()-0.5);
+    for(const v of vals){
+      if(isValid(board,row,col,v,n)){board[row][col]=v;if(fill(pos+1))return true;board[row][col]=-1;}
+    }
+    return false;
+  }
+  fill(0); return board;
+}
+
+function makePuzzle(sol,givens,n){
+  const p=sol.map(r=>[...r]);
+  const cells=[];
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++) cells.push([r,c]);
+  cells.sort(()=>Math.random()-0.5);
+  let removed=0;
+  for(const [r,c] of cells){if(removed>=n*n-givens)break;p[r][c]=-1;removed++;}
+  return p;
+}
+
+function getMissingInRow(row){
+  return [...Array(N).keys()];
+}
+
+function renderGrid(){
+  const grid=document.getElementById('sgrid');
+  const cellSize = N === 4 ? 74 : 60;
+  const svgSize  = N === 4 ? 44 : 36;
+  grid.style.gridTemplateColumns = `repeat(${N}, ${cellSize}px)`;
+  grid.style.gridTemplateRows    = `repeat(${N}, ${cellSize}px)`;
+  grid.innerHTML='';
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    const cell=document.createElement('div');cell.className='cell';
+    cell.style.width=cellSize+'px'; cell.style.height=cellSize+'px';
+    const given=puzzle[r][c]!==-1;
+    if(given) cell.classList.add('given'); else cell.classList.add('empty');
+    if(selectedCell&&selectedCell[0]===r&&selectedCell[1]===c) cell.classList.add('selected');
+    const v=userBoard[r][c];
+    if(v!==-1){
+      cell.appendChild(drawShapeSVG(v,svgSize));
+      if(!given&&solution[r][c]!==v) cell.classList.add('wrong');
+    }
+    if(!given){
+      cell.addEventListener('click',()=>{
+        if(gameOver) return;
+        selectedCell=[r,c];
+        selectedPick=null;
+        renderGrid();renderMissing();
+      });
+    }
+    grid.appendChild(cell);
+  }
+}
+
+function renderMissing(){
+  const bar=document.getElementById('missing-bar');
+  const btnSize = N === 4 ? 54 : 46;
+  const svgSize = N === 4 ? 34 : 28;
+  bar.innerHTML='<span class="missing-label">Välj symbol:</span>';
+  const row=selectedCell?selectedCell[0]:null;
+  const missing=getMissingInRow(row);
+  if(row===null){
+    const t=document.createElement('span');
+    t.style.cssText='font-size:11px;color:var(--text-faint)';
+    t.textContent='Välj en ruta för att se symbolerna';
+    bar.appendChild(t);return;
+  }
+  for(const v of missing){
+    const btn=document.createElement('button');btn.className='sym-btn';
+    btn.style.width=btnSize+'px';btn.style.height=btnSize+'px';
+    if(selectedPick===v) btn.classList.add('active-pick');
+    btn.appendChild(drawShapeSVG(v,svgSize));
+    btn.addEventListener('click',()=>{
+      if(gameOver) return;
+      selectedPick=selectedPick===v?null:v;
+      if(selectedPick!==null&&selectedCell) placeValue(selectedCell[0],selectedCell[1],selectedPick);
+      else{renderGrid();renderMissing();}
+    });
+    bar.appendChild(btn);
+  }
+  const eb=document.createElement('button');eb.className='erase-btn';
+  eb.style.width=btnSize+'px';eb.style.height=btnSize+'px';
+  eb.innerHTML='⌫';
+  eb.addEventListener('click',()=>{
+    if(gameOver||!selectedCell) return;
+    const[r,c]=selectedCell;if(puzzle[r][c]===-1){userBoard[r][c]=-1;renderGrid();renderMissing();}
+  });
+  bar.appendChild(eb);
+}
+
+function placeValue(r,c,v){
+  if(puzzle[r][c]!==-1||gameOver) return;
+  userBoard[r][c]=v;
+  renderGrid();renderMissing();
+  checkWin();
+}
+
+function checkWin(){
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(userBoard[r][c]===-1||userBoard[r][c]!==solution[r][c]) return;
+  }
+  const elapsed = puzzleStartSecs - secondsLeft;
+  if(bestTime===null||elapsed<bestTime) bestTime=elapsed;
+  if(worstTime===null||elapsed>worstTime) worstTime=elapsed;
+  currentStreak++; if(currentStreak>bestStreak) bestStreak=currentStreak;
+  sessionSolved++;
+  puzzleLog.push({ diff: currentDiff(), solved: true, skipped: false, time: elapsed, n: N });
+  updateSessionStats();
+  document.getElementById('status').innerHTML='<span class="win-msg">Rätt!</span>';
+  setTimeout(initPuzzle, 600);
+}
+
+function showResults(){
+  clearInterval(timerInterval);
+  showScreen('screen-results');
+  const total=sessionSolved+sessionSkipped;
+  document.getElementById('results-subtitle').textContent=
+    `${total} pussel genomförda på 6 minuter · ${DIFF_LABELS[selectedDiff]}`;
+  document.getElementById('res-solved').textContent=sessionSolved;
+  document.getElementById('res-skipped').textContent=sessionSkipped;
+  document.getElementById('res-best').textContent=bestTime!==null?formatTime(bestTime):'—';
+  document.getElementById('res-streak').textContent=bestStreak;
+  // Avg time per diff
+  const timeByDiff={easy:[],medium:[],hard:[]};
+  puzzleLog.filter(p=>p.solved).forEach(p=>{if(p.diff in timeByDiff)timeByDiff[p.diff].push(p.time);});
+  const insEl=document.getElementById('insights-row');
+  if(insEl){
+    let timeHtml='<div style="background:var(--bg);border:1px solid var(--border-soft);border-radius:12px;padding:1rem 1.2rem;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.7rem;">Genomsnittlig lösningstid</div>';
+    [['easy','Lätt','var(--accent)'],['medium','Medel','#7A4A00'],['hard','Svår','var(--danger)']].forEach(([k,l,c])=>{
+      const times=timeByDiff[k];
+      const avg=times.length>0?formatTime(Math.round(times.reduce((a,b)=>a+b,0)/times.length)):null;
+      timeHtml+=`<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--text-muted)">${l}</span><span style="color:${c};font-weight:500;">${avg||'—'}</span></div>`;
+    });
+    timeHtml+='</div>';
+    let worstHtml='<div style="background:var(--bg);border:1px solid var(--border-soft);border-radius:12px;padding:1rem 1.2rem;"><div style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-muted);margin-bottom:.7rem;">Tider</div>';
+    worstHtml+=`<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--text-muted)">Snabbast</span><span style="color:var(--accent);font-weight:500;">${bestTime!==null?formatTime(bestTime):'—'}</span></div>`;
+    worstHtml+=`<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px;"><span style="color:var(--text-muted)">Långsammast</span><span style="color:var(--danger);font-weight:500;">${worstTime!==null?formatTime(worstTime):'—'}</span></div>`;
+    worstHtml+=`<div style="display:flex;justify-content:space-between;font-size:12px;"><span style="color:var(--text-muted)">Bästa streak</span><span style="font-weight:500;">${bestStreak}</span></div>`;
+    worstHtml+='</div>';
+    insEl.innerHTML=timeHtml+worstHtml;
+  }
+
+
+  const bd={easy:{s:0,t:0},medium:{s:0,t:0},hard:{s:0,t:0}};
+  puzzleLog.forEach(p=>{if(p.diff in bd){bd[p.diff].t++;if(p.solved)bd[p.diff].s++;}});
+  const bdEl=document.getElementById('diff-breakdown');
+  if(bdEl){bdEl.innerHTML='';[['easy','Lätt','#2D5016','#EBF2E3'],['medium','Medel','#7A4A00','#FFF5E6'],['hard','Svår','#8B1A1A','#FBF0F0']].forEach(([key,lbl,col,bg])=>{const b=bd[key];const pct=b.t>0?Math.round(b.s/b.t*100):null;bdEl.innerHTML+=`<div style="background:${bg};border-radius:12px;padding:1rem;text-align:center;border:1px solid var(--border-soft);"><span style="font-family:var(--serif);font-size:1.6rem;font-weight:600;color:${col};display:block;line-height:1;margin-bottom:4px;">${b.s}/<span style="font-size:1rem;">${b.t}</span></span><span style="font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;display:block;margin-bottom:3px;">${lbl}</span><span style="font-size:11px;color:${col};">${pct!==null?pct+'% löst':'Inga pussel'}</span></div>`;});}
+  const log=document.getElementById('puzzle-log');
+  log.innerHTML=`<div class="log-header"><span>Pussel</span><span>Svårighet</span><span>Storlek</span><span>Tid</span><span>Resultat</span></div>`;
+  if(puzzleLog.length===0){
+    const empty=document.createElement('div');empty.className='log-row';
+    empty.innerHTML='<span style="color:var(--text-faint);font-size:12px;">Inga pussel genomförda.</span><span></span><span></span><span></span><span></span>';
+    log.appendChild(empty);
+  }
+  puzzleLog.forEach((p,i)=>{
+    const row=document.createElement('div');row.className='log-row';
+    const res=p.skipped?'<span class="badge failed">Hoppad</span>':'<span class="badge solved">Löst</span>';
+    row.innerHTML=`<span>#${i+1}</span><span><span class="badge ${p.diff}">${DIFF_LABELS[p.diff]}</span></span><span>${p.n}×${p.n}</span><span>${p.solved?formatTime(p.time):'—'}</span><span>${res}</span>`;
+    log.appendChild(row);
+  });
+}
+</script>
+</body>
+</html>
