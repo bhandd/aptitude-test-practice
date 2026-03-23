@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Kodningstest — AON-träning</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Fraunces:ital,wght@0,300;0,600;1,300&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#F5F2EC;--surface:#FFFFFF;--border:#D8D3C8;--border-soft:#E8E4DC;
+  --text:#1A1814;--text-muted:#7A7468;--text-faint:#B0AA9F;
+  --accent:#2D5016;--accent-light:#EBF2E3;--danger:#8B1A1A;--danger-light:#FBF0F0;
+  --mono:'DM Mono',monospace;--serif:'Fraunces',serif;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);min-height:100vh;display:flex;flex-direction:column;align-items:center;}
+header{width:100%;max-width:700px;padding:2rem 1.5rem 1rem;display:flex;justify-content:space-between;align-items:baseline;}
+.logo{font-family:var(--serif);font-size:1.5rem;font-weight:300;letter-spacing:-0.02em;}
+.logo em{font-style:italic;color:var(--accent);}
+main{width:100%;max-width:700px;padding:0 1.5rem 3rem;}
+.screen{display:none;}.screen.active{display:block;}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:2.5rem;margin-top:1rem;}
+.card h2{font-family:var(--serif);font-weight:300;font-size:1.3rem;margin-bottom:.4rem;}
+.card p{font-size:12px;color:var(--text-muted);line-height:1.7;margin-bottom:1.5rem;}
+.legend{background:var(--bg);border:1px solid var(--border-soft);border-radius:10px;padding:1rem 1.2rem;font-size:12px;color:var(--text-muted);line-height:2;margin-bottom:1.5rem;}
+.legend strong{color:var(--text);}
+.start-go{width:100%;padding:14px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:var(--mono);font-size:14px;cursor:pointer;letter-spacing:.05em;transition:opacity .15s;}
+.start-go:hover{opacity:.88;}
+
+.stats-bar{display:flex;margin-bottom:14px;border:1px solid var(--border);border-radius:10px;overflow:hidden;background:var(--surface);}
+.stat-cell{flex:1;padding:10px 8px;text-align:center;border-right:1px solid var(--border-soft);}
+.stat-cell:last-child{border-right:none;}
+.stat-val{font-family:var(--serif);font-size:1.3rem;font-weight:600;display:block;line-height:1;margin-bottom:3px;}
+.stat-lbl{font-size:9px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
+
+.timer-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;}
+.timer-display{font-family:var(--serif);font-size:2rem;font-weight:300;letter-spacing:.04em;}
+.timer-display.urgent{color:var(--danger);}
+.timer-bar-wrap{flex:1;height:4px;background:var(--border-soft);border-radius:2px;margin:0 12px;}
+.timer-bar{height:4px;border-radius:2px;background:var(--accent);transition:width 1s linear,background .3s;}
+
+.question-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:1.8rem;margin-bottom:14px;}
+
+/* diagram */
+.pipe-diagram{display:flex;flex-direction:column;align-items:center;}
+.sym-row{display:flex;gap:8px;justify-content:center;}
+.sym-box{width:64px;height:64px;background:var(--surface);border:1px solid var(--border);border-radius:10px;display:flex;align-items:center;justify-content:center;}
+.pipe-neck{width:13px;height:22px;background:#1A9E8F;margin:0 auto;}
+.pipe-funnel-top{width:46px;height:22px;background:#1A9E8F;clip-path:polygon(10% 0%,90% 0%,65% 100%,35% 100%);margin:0 auto;}
+.pipe-funnel-bot{width:46px;height:22px;background:#1A9E8F;clip-path:polygon(35% 0%,65% 0%,90% 100%,10% 100%);margin:0 auto;}
+.pipe-mid{width:100%;display:flex;align-items:center;position:relative;}
+.pipe-hline{position:absolute;left:0;right:0;height:11px;background:#B8EAE5;border-radius:6px;top:50%;transform:translateY(-50%);}
+.pipe-codes{display:flex;gap:7px;position:relative;z-index:1;margin:0 auto;}
+
+.code-btn{
+  min-width:80px;padding:10px 12px;border:2px solid var(--border);border-radius:9px;
+  background:var(--surface);font-family:var(--mono);font-size:1rem;font-weight:500;
+  cursor:pointer;text-align:center;letter-spacing:.1em;transition:all .15s;color:var(--text);
+}
+.code-btn:hover{border-color:#B0AA9F;background:var(--bg);}
+.code-btn.highlighted{border-color:#1A9E8F;background:#E8F8F6;color:#0E6E62;box-shadow:0 0 0 3px #B8EAE5;}
+.code-btn.correct{border-color:#3A8C2A;background:#D6EDD0;color:#3A8C2A;}
+.code-btn.wrong{border-color:var(--danger);background:var(--danger-light);color:var(--danger);}
+.code-btn.reveal{border-color:#3A8C2A;background:#D6EDD0;color:#3A8C2A;}
+.code-btn:disabled{cursor:default;}
+
+.feedback-box{margin-top:1rem;padding:.9rem 1.2rem;border-radius:10px;font-size:12px;line-height:1.7;display:none;}
+.feedback-box.show{display:block;}
+.feedback-correct{background:var(--accent-light);color:var(--accent);}
+.feedback-wrong{background:var(--danger-light);color:var(--danger);}
+.next-btn{width:100%;margin-top:1rem;padding:12px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:var(--mono);font-size:13px;cursor:pointer;letter-spacing:.04em;display:none;transition:opacity .15s;}
+.next-btn:hover{opacity:.88;}
+.next-btn.show{display:block;}
+
+.big-stat{display:flex;gap:12px;margin-bottom:1.5rem;}
+.big-num{flex:1;text-align:center;padding:1.2rem .8rem;background:var(--bg);border-radius:12px;border:1px solid var(--border-soft);}
+.big-num .val{font-family:var(--serif);font-size:2.4rem;font-weight:600;display:block;line-height:1;margin-bottom:6px;}
+.big-num .lbl{font-size:10px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em;}
+.results-actions{display:flex;gap:10px;}
+.btn-primary{flex:1;padding:13px;background:var(--accent);color:#fff;border:none;border-radius:10px;font-family:var(--mono);font-size:13px;cursor:pointer;transition:opacity .15s;}
+.btn-primary:hover{opacity:.88;}
+.btn-secondary{flex:1;padding:13px;background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:10px;font-family:var(--mono);font-size:13px;cursor:pointer;}
+.btn-secondary:hover{background:var(--bg);}
+</style>
+</head>
+<body>
+<header><div class="logo">Kodnings<em>test</em></div></header>
+<main>
+  <div class="screen active" id="screen-start">
+    <div class="card">
+      <h2>Kodningstest</h2>
+      <p>Symbolerna ovanför röret har varsin siffra baserat på sin position (1, 2, 3, 4). Symbolerna nedanför visas i en ny ordning — välj den sifferkod som motsvarar den ordningen.</p>
+      <div class="legend">
+        <strong>Exempel:</strong> Om symbolerna ovanför är ▲ ● + ■ (position 1–4) och nedanför visas + ■ ▲ ● → svaret är 3 4 1 2
+      </div>
+      <button class="start-go" onclick="startTest()">Starta — 6 minuter →</button>
+    </div>
+  </div>
+
+  <div class="screen" id="screen-game">
+    <div class="stats-bar">
+      <div class="stat-cell"><span class="stat-val" id="stat-correct">0</span><span class="stat-lbl">Rätt</span></div>
+      <div class="stat-cell"><span class="stat-val" id="stat-wrong">0</span><span class="stat-lbl">Fel</span></div>
+      <div class="stat-cell"><span class="stat-val" id="stat-q">1</span><span class="stat-lbl">Fråga</span></div>
+      <div class="stat-cell"><span class="stat-val" id="stat-streak">0</span><span class="stat-lbl">Streak</span></div>
+    </div>
+    <div class="timer-row">
+      <div>
+        <div class="timer-display" id="timer">06:00</div>
+        <div class="timer-bar-wrap"><div class="timer-bar" id="timer-bar" style="width:100%"></div></div>
+      </div>
+      <button style="padding:7px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface);font-family:var(--mono);font-size:12px;cursor:pointer;" onclick="endTest()">Avsluta</button>
+    </div>
+    <div class="question-card" id="question-card"></div>
+    <div class="feedback-box" id="feedback-box"></div>
+    <button class="next-btn" id="next-btn" onclick="nextQuestion()">Nästa →</button>
+  </div>
+
+  <div class="screen" id="screen-results">
+    <div class="card">
+      <h2>Resultat</h2>
+      <p style="font-size:12px;color:var(--text-muted);margin-bottom:2rem;" id="res-subtitle"></p>
+      <div class="big-stat">
+        <div class="big-num"><span class="val" id="res-correct">0</span><span class="lbl">Rätt</span></div>
+        <div class="big-num"><span class="val" id="res-wrong">0</span><span class="lbl">Fel</span></div>
+        <div class="big-num"><span class="val" id="res-pct">0%</span><span class="lbl">Andel rätt</span></div>
+        <div class="big-num"><span class="val" id="res-streak">0</span><span class="lbl">Bästa streak</span></div>
+      </div>
+      <div class="results-actions">
+        <button class="btn-primary" onclick="startTest()">Kör igen</button>
+        <button class="btn-secondary" onclick="showScreen('screen-start')">Startsida</button>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const TOTAL_SECS = 6*60, TOTAL_Q = 30;
+
+const SHAPE_DEFS = [
+  {shape:'square',  color:'#E24B4A'},
+  {shape:'triangle',color:'#BA7517'},
+  {shape:'plus',    color:'#2D6BB5'},
+  {shape:'circle',  color:'#4A8C1C'},
+  {shape:'diamond', color:'#7F77DD'},
+  {shape:'star',    color:'#C2397A'},
+];
+
+function drawSVG(shape,color,size=40){
+  const ns='http://www.w3.org/2000/svg';
+  const svg=document.createElementNS(ns,'svg');
+  svg.setAttribute('width',size);svg.setAttribute('height',size);svg.setAttribute('viewBox','0 0 40 40');
+  const cx=20,cy=20,r=14;let el;
+  if(shape==='circle'){el=document.createElementNS(ns,'circle');el.setAttribute('cx',cx);el.setAttribute('cy',cy);el.setAttribute('r',r);}
+  else if(shape==='square'){el=document.createElementNS(ns,'rect');el.setAttribute('x',cx-r);el.setAttribute('y',cy-r);el.setAttribute('width',r*2);el.setAttribute('height',r*2);}
+  else if(shape==='triangle'){el=document.createElementNS(ns,'polygon');el.setAttribute('points',`${cx},${cy-r} ${cx+r*1.1},${cy+r*0.75} ${cx-r*1.1},${cy+r*0.75}`);}
+  else if(shape==='plus'){const t=r*0.33,a=r;el=document.createElementNS(ns,'polygon');el.setAttribute('points',`${cx-t},${cy-a} ${cx+t},${cy-a} ${cx+t},${cy-t} ${cx+a},${cy-t} ${cx+a},${cy+t} ${cx+t},${cy+t} ${cx+t},${cy+a} ${cx-t},${cy+a} ${cx-t},${cy+t} ${cx-a},${cy+t} ${cx-a},${cy-t} ${cx-t},${cy-t}`);}
+  else if(shape==='diamond'){el=document.createElementNS(ns,'polygon');el.setAttribute('points',`${cx},${cy-r} ${cx+r},${cy} ${cx},${cy+r} ${cx-r},${cy}`);}
+  else if(shape==='star'){const pts=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5;const rad=i%2===0?r:r*0.42;pts.push(`${cx+rad*Math.cos(a)},${cy+rad*Math.sin(a)}`);}el=document.createElementNS(ns,'polygon');el.setAttribute('points',pts.join(' '));}
+  el.setAttribute('fill',color);svg.appendChild(el);return svg;
+}
+
+const shuffle=arr=>[...arr].sort(()=>Math.random()-.5);
+const codeStr=arr=>arr.join(' ');
+
+// Apply a permutation code to a symbol array
+// perm = [3,1,4,2] means: new[0]=old[2], new[1]=old[0], new[2]=old[3], new[3]=old[1]
+function applyPerm(syms, perm){
+  return perm.map(p=>syms[p-1]);
+}
+
+// Given original top symbols and a sequence of applied perms,
+// compute what number each bottom symbol gets
+function encodeWithPerms(topSyms, perms, botSyms){
+  // Start mapping: sym at original position i → number i+1
+  // Apply each perm: after perm1, sym that was at perm1[0]-1 is now at position 0 → number 1, etc.
+  // Build current mapping: for each original index, what number it has now
+  let mapping = [1,2,3,4]; // mapping[origIdx] = currentNumber
+  for(const perm of perms){
+    const newMapping = Array(4);
+    perm.forEach((origPos,newIdx)=>{
+      // symbol originally at origPos-1 is now at newIdx → gets number newIdx+1
+      newMapping[origPos-1] = newIdx+1;
+    });
+    mapping = newMapping;
+  }
+  // Encode bottom symbols
+  return botSyms.map(sym=>{
+    const origIdx = topSyms.indexOf(sym);
+    return mapping[origIdx];
+  });
+}
+
+function genWrongs(correct, n=2){
+  const used=new Set([correct]);
+  const res=[];
+  let t=0;
+  while(res.length<n&&t<300){
+    t++;
+    const w=codeStr(shuffle([1,2,3,4]));
+    if(!used.has(w)){used.add(w);res.push(w);}
+  }
+  return res;
+}
+
+// ── Level generators ─────────────────────────────────────────
+
+function makeLevel1(){
+  const idxs=shuffle([0,1,2,3,4,5]).slice(0,4);
+  const topSyms=idxs.map(i=>SHAPE_DEFS[i]);
+  const botOrder=shuffle([0,1,2,3]);
+  const botSyms=botOrder.map(i=>topSyms[i]);
+  const correctArr=botOrder.map(i=>i+1);
+  const correctCode=codeStr(correctArr);
+  return {
+    level:1,
+    topSyms, botSyms,
+    highlightedCodes:[],
+    choices:shuffle([correctCode,...genWrongs(correctCode)]),
+    correctCode
+  };
+}
+
+function makeLevel2(){
+  const idxs=shuffle([0,1,2,3,4,5]).slice(0,4);
+  const topSyms=idxs.map(i=>SHAPE_DEFS[i]);
+  // perm1: highlighted code that remaps
+  const perm1=shuffle([1,2,3,4]);
+  const mid1=codeStr(perm1);
+  // bot order (indices into original topSyms)
+  const botOrder=shuffle([0,1,2,3]);
+  const botSyms=botOrder.map(i=>topSyms[i]);
+  const correctArr=encodeWithPerms(topSyms,[perm1],botSyms);
+  const correctCode=codeStr(correctArr);
+  return {
+    level:2,
+    topSyms, botSyms,
+    highlightedCodes:[mid1],
+    choices:shuffle([correctCode,...genWrongs(correctCode)]),
+    correctCode
+  };
+}
+
+function makeLevel3(){
+  const idxs=shuffle([0,1,2,3,4,5]).slice(0,4);
+  const topSyms=idxs.map(i=>SHAPE_DEFS[i]);
+  // two highlighted perms
+  const perm1=shuffle([1,2,3,4]);
+  const perm2=shuffle([1,2,3,4]);
+  const mid1=codeStr(perm1);
+  const mid2=codeStr(perm2);
+  const botOrder=shuffle([0,1,2,3]);
+  const botSyms=botOrder.map(i=>topSyms[i]);
+  const correctArr=encodeWithPerms(topSyms,[perm1,perm2],botSyms);
+  const correctCode=codeStr(correctArr);
+  return {
+    level:3,
+    topSyms, botSyms,
+    highlightedCodes:[mid1,mid2],
+    choices:shuffle([correctCode,...genWrongs(correctCode)]),
+    correctCode
+  };
+}
+
+function pickQuestion(q){
+  const pos = q + 1; // 1-based
+  // Every 3rd question (pos 3,6,9,12,...) is a higher level
+  if(pos % 3 === 0) {
+    // After question 9, every other level-2 slot (pos 12,18,24,...) becomes level-3
+    if(pos >= 12 && (pos / 3) % 2 === 0) return makeLevel3();
+    return makeLevel2();
+  }
+  return makeLevel1();
+}
+
+// ── State ────────────────────────────────────────────────────
+let secondsLeft=TOTAL_SECS,timerInterval=null,testOver=false;
+let totalCorrect=0,totalWrong=0,currentQ=0,currentStreak=0,bestStreak=0;
+let currentQuestion=null,answered=false;
+
+function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById(id).classList.add('active');}
+function formatTime(s){const m=Math.floor(s/60),sec=s%60;return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');}
+
+function startTest(){
+  secondsLeft=TOTAL_SECS;testOver=false;
+  totalCorrect=0;totalWrong=0;currentQ=0;currentStreak=0;bestStreak=0;
+  showScreen('screen-game');
+  updateStats();
+  loadQuestion();
+  clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{
+    if(testOver){clearInterval(timerInterval);return;}
+    secondsLeft--;
+    const el=document.getElementById('timer');
+    if(el){el.textContent=formatTime(secondsLeft);el.classList.toggle('urgent',secondsLeft<=60);}
+    const bar=document.getElementById('timer-bar');
+    if(bar){bar.style.width=(secondsLeft/TOTAL_SECS*100)+'%';bar.style.background=secondsLeft<=60?'#8B1A1A':secondsLeft<=120?'#BA7517':'#2D5016';}
+    if(secondsLeft<=0){clearInterval(timerInterval);testOver=true;showResults();}
+  },1000);
+}
+
+function endTest(){clearInterval(timerInterval);testOver=true;showResults();}
+
+function updateStats(){
+  document.getElementById('stat-correct').textContent=totalCorrect;
+  document.getElementById('stat-wrong').textContent=totalWrong;
+  document.getElementById('stat-q').textContent=currentQ+1;
+  document.getElementById('stat-streak').textContent=currentStreak;
+}
+
+function loadQuestion(){
+  if(currentQ>=TOTAL_Q){endTest();return;}
+  answered=false;
+  currentQuestion=pickQuestion(currentQ);
+  const {topSyms,botSyms,highlightedCodes,choices}=currentQuestion;
+  const card=document.getElementById('question-card');
+
+  // Top row
+  let topHtml='<div class="sym-row">';
+  topSyms.forEach(()=>topHtml+=`<div class="sym-box" data-role="top"></div>`);
+  topHtml+='</div>';
+
+  // Build pipe sections with highlighted codes between top and bottom
+  // Level 1: top → [funnel] → [choices] → [funnel] → bot
+  // Level 2: top → [funnel] → [mid1 highlighted + choices] → [funnel] → bot  (but mid is IN the choices row)
+  // Actually: highlighted codes sit IN the pipe-mid row alongside choices
+  // All choices shown; highlighted ones are not clickable
+
+  // Highlighted codes go ABOVE the funnel, answer choices go in the middle pipe
+  // Each highlighted code on its own row, stacked top to bottom above the funnel
+  let aboveHtml='';
+  if(highlightedCodes.length>0){
+    highlightedCodes.forEach(c=>{
+      aboveHtml+=`<div style="display:flex;justify-content:center;margin-bottom:4px;">`;
+      aboveHtml+=`<button class="code-btn highlighted" disabled>${c}</button>`;
+      aboveHtml+=`</div>`;
+    });
+  }
+
+  let codesHtml='';
+  choices.forEach((c,i)=>{
+    codesHtml+=`<button class="code-btn" id="choice-${i}" onclick="selectChoice(${i})">${c}</button>`;
+  });
+
+  const midHtml=`<div class="pipe-mid"><div class="pipe-hline"></div><div class="pipe-codes">${codesHtml}</div></div>`;
+  const botHtml='<div class="sym-row">'+botSyms.map(()=>`<div class="sym-box" data-role="bot"></div>`).join('')+'</div>';
+
+  card.innerHTML=`<div class="pipe-diagram">
+    ${topHtml}
+    ${aboveHtml}
+    <div class="pipe-funnel-top"></div><div class="pipe-neck"></div>
+    ${midHtml}
+    <div class="pipe-neck"></div><div class="pipe-funnel-bot"></div>
+    ${botHtml}
+  </div>`;
+
+  card.querySelectorAll('[data-role="top"]').forEach((el,i)=>el.appendChild(drawSVG(topSyms[i].shape,topSyms[i].color)));
+  card.querySelectorAll('[data-role="bot"]').forEach((el,i)=>el.appendChild(drawSVG(botSyms[i].shape,botSyms[i].color)));
+
+  document.getElementById('feedback-box').className='feedback-box';
+  document.getElementById('next-btn').className='next-btn';
+  document.getElementById('next-btn').textContent=currentQ+1<TOTAL_Q?'Nästa →':'Se resultat';
+  updateStats();
+}
+
+function selectChoice(idx){
+  if(answered||testOver)return;
+  const btn=document.getElementById('choice-'+idx);
+  if(!btn||btn.disabled)return;
+  answered=true;
+  const chosen=currentQuestion.choices[idx];
+  const correct=chosen===currentQuestion.correctCode;
+  if(correct){totalCorrect++;currentStreak++;if(currentStreak>bestStreak)bestStreak=currentStreak;}
+  else{totalWrong++;currentStreak=0;}
+  currentQuestion.choices.forEach((_,i)=>{
+    const b=document.getElementById('choice-'+i);
+    if(!b)return;
+    b.disabled=true;
+    const isCorrect=currentQuestion.choices[i]===currentQuestion.correctCode;
+    if(i===idx&&correct)b.classList.add('correct');
+    else if(i===idx&&!correct)b.classList.add('wrong');
+    else if(isCorrect)b.classList.add('reveal');
+  });
+  const fb=document.getElementById('feedback-box');
+  fb.className='feedback-box show '+(correct?'feedback-correct':'feedback-wrong');
+  fb.innerHTML=correct?'<strong>Rätt!</strong>':`<strong>Fel.</strong> Rätt svar: ${currentQuestion.correctCode}`;
+  document.getElementById('next-btn').classList.add('show');
+  updateStats();
+}
+
+function nextQuestion(){
+  currentQ++;
+  if(currentQ>=TOTAL_Q||testOver){endTest();return;}
+  loadQuestion();
+}
+
+function showResults(){
+  clearInterval(timerInterval);showScreen('screen-results');
+  const total=totalCorrect+totalWrong;
+  const pct=total>0?Math.round(totalCorrect/total*100):0;
+  document.getElementById('res-subtitle').textContent=`${total} frågor besvarade på 6 minuter`;
+  document.getElementById('res-correct').textContent=totalCorrect;
+  document.getElementById('res-wrong').textContent=totalWrong;
+  document.getElementById('res-pct').textContent=pct+'%';
+  document.getElementById('res-streak').textContent=bestStreak;
+}
+</script>
+</body>
+</html>

@@ -465,7 +465,6 @@ function renderGrid(){
     const v=userBoard[r][c];
     if(v!==-1){
       cell.appendChild(drawShapeSVG(v,svgSize));
-      if(!given&&solution[r][c]!==v) cell.classList.add('wrong');
     }
     if(!given){
       cell.addEventListener('click',()=>{
@@ -522,9 +521,41 @@ function placeValue(r,c,v){
   checkWin();
 }
 
-function checkWin(){
+function showWrongFeedback(){
+  // Flash wrong cells red (rows/cols with duplicates)
+  const grid=document.getElementById('sgrid');
+  if(!grid) return;
+  const cells=grid.querySelectorAll('.cell');
+  let i=0;
   for(let r=0;r<N;r++) for(let c=0;c<N;c++){
-    if(userBoard[r][c]===-1||userBoard[r][c]!==solution[r][c]) return;
+    const cell=cells[i++];
+    const rowVals=userBoard[r];
+    const colVals=userBoard.map(row=>row[c]);
+    const v=userBoard[r][c];
+    const rowDup=rowVals.filter(x=>x===v).length>1;
+    const colDup=colVals.filter(x=>x===v).length>1;
+    if(!cell.classList.contains('given')&&(rowDup||colDup)) cell.classList.add('wrong');
+  }
+  document.getElementById('status').innerHTML='<span style="color:var(--danger-color,#8B1A1A)">Fel — det finns dubletter i en rad eller kolumn.</span>';
+  setTimeout(()=>{
+    grid.querySelectorAll('.cell.wrong').forEach(c=>c.classList.remove('wrong'));
+    document.getElementById('status').textContent='';
+  }, 2000);
+}
+
+function checkWin(){
+  // Only check when all cells are filled
+  for(let r=0;r<N;r++) for(let c=0;c<N;c++){
+    if(userBoard[r][c]===-1) return;
+  }
+  // Check if board satisfies row+col constraints (accept any valid solution)
+  for(let r=0;r<N;r++){
+    const row=userBoard[r];
+    if(new Set(row).size!==N) { showWrongFeedback(); return; }
+  }
+  for(let c=0;c<N;c++){
+    const col=userBoard.map(r=>r[c]);
+    if(new Set(col).size!==N) { showWrongFeedback(); return; }
   }
   const elapsed = puzzleStartSecs - secondsLeft;
   if(bestTime===null||elapsed<bestTime) bestTime=elapsed;

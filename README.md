@@ -30,7 +30,7 @@ git clone https://github.com/YOUR_USERNAME/aptitude-test-practice.git
 cd aptitude-test-practice
 ```
 
-Then open either HTML file directly in your browser — no server needed.
+Then open either HTML file directly in your browser — no server needed. Note that `puzzles.js` must be in the same folder as `deductive-test.html`.
 
 ```
 open deductive-test.html    # macOS
