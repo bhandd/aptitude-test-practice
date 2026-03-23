@@ -10,3 +10,14 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Debug-bilder från solver
+debug_*.png
+solver/debug_*.png
+
+debug_perm_*.png
+debug_highlight_*.png
+solver/debug_perm_*.png
+solver/debug_highlight_*.png
+debug_all_codes.png
+solver/debug_all_codes.png
