@@ -22,3 +22,5 @@ solver/debug_highlight_*.png
 debug_all_codes.png
 solver/debug_all_codes.png
 solver/.vscode/
+
+solver/debug_*.png
